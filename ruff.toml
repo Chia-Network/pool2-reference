@@ -1,0 +1,93 @@
+line-length = 120
+
+[lint]
+preview = true
+select = ["ALL"]
+explicit-preview-rules = false
+ignore = [
+    # Pylint convention
+    "PLC0415", # import-outside-top-level
+    "PLC1901", # compare-to-empty-string
+
+    # Pylint refactor
+    "PLR0915", # too-many-statements
+    "PLR0914", # too-many-locals
+    "PLR0913", # too-many-arguments
+    "PLR0912", # too-many-branches
+    "PLR1702", # too-many-nested-blocks
+    "PLR0904", # too-many-public-methods
+    "PLR0917", # too-many-positional-arguments
+    "PLR0916", # too-many-boolean-expressions
+    "PLR0911", # too-many-return-statements
+
+    # Pylint warning
+    "PLW1641", # eq-without-hash
+
+    # Flake8 async
+    # Should probably fix these
+    "ASYNC230", # blocking-open-call-in-async-function
+    "ASYNC240", # pathlib for async operations
+    "ASYNC250", # blocking-input-call-in-async-function
+
+    # flake8-implicit-str-concat
+    "ISC003", # explicit-string-concatenation
+
+    # Ruff Specific
+
+    # This code is problematic because using instantiated types as defaults is so common across the codebase.
+    # Its purpose is to prevent accidenatally assigning mutable defaults. However, this is a bit overkill for that.
+    # That being said, it would be nice to add some way to actually guard against that specific mutable default behavior.
+    "RUF009", # function-call-in-dataclass-default-argument
+    "RUF056", # falsy-dict-get-fallback
+
+    # Security linter
+    "S603", # subprocess-without-shell-equals-true
+    # Need review on which of these we can/should fix
+    "S101", # assert
+    "S404", # suspicious-subprocess-import
+    "S607", # start-process-with-partial-path
+
+    # Might be nice, might be annoying
+    "BLE001",  # blind exceptions: ~300 errors
+    "D",  # docstrings: ~9000 errors,
+    "TRY",  # proper exception behavior: ~1300 errors
+    "EM",  # exception messages: ~1000 errors
+    "C",  # comprehensions: ~600 errors
+    "SLF",  # private member access: ~600 errors
+    "FURB",  # "refurbishing" and "modernizing": ~200 errors
+    "PERF",  # anti-pattern linting: ~200 errors
+    "N",  # pep8 naming: ~200 errors
+    # Probably fine for our purposes
+    "COM812",  # trailing commas: ~5000 errors
+    "CPY001",  # copyright notices: ~900 errors
+    "TC",  # type checking linting: ~1700 errors  # Too much reliance on runtime types to enable this
+    "T",  # using print: ~1300 errors  # might want to enable this but not for CLI or tools/
+    "TD",  # formatting of TODOs: ~800 errors
+    "DOC",  # also docstrings: ~700 errors
+    "ARG",  # unused arguments: ~500 errors
+    "ERA",  # commented out code: ~400 errors
+    "DTZ",  # datetimez:  <50 errors  # likely needs the tzlocal library as a dependency
+    "FIX",  # TODOs, etc: ~400 errors
+]
+
+[lint.flake8-implicit-str-concat]
+# allow-multiline = false
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[lint.pylint]
+max-args = 5
+max-locals = 15
+max-returns = 6
+max-branches = 12
+max-statements = 50
+max-nested-blocks = 5
+max-public-methods = 20
+max-bool-expr = 5
+
+[lint.pyupgrade]
+keep-runtime-typing = true

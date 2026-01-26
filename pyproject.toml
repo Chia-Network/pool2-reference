@@ -1,0 +1,68 @@
+[project]
+name = "chia-pool"
+dynamic = [ "dependencies", "version" ]
+description = "Chia reference pooling implementation"
+requires-python = ">=3.10, <4"
+authors = [
+    {name="Matt Hauff", email="mhauff@chia.net"}
+]
+license = "Apache-2.0"
+readme = {file = "README.md", content-type = "text/markdown"}
+keywords= ["chia", "blockchain", "node", "pooling"]
+homepage = "https://chia.net/"
+
+[tool.poetry]
+# see [tool.poetry-dynamic-versioning]
+packages = [{ include = "chia-pool"}]
+version = "0.0.0"
+
+[[tool.poetry.source]]
+name = "chia-pool"
+url = "https://pypi.chia.net/simple/"
+priority = "supplemental"
+
+[project.urls]
+source = "https://github.com/Chia-Network/chia-pool/"
+
+[tool.poetry.dependencies]
+click = { version = ">=8.3.1,<9.0.0", optional = true }
+mypy = { version = ">=1.11.1", optional = true }
+pre-commit = { version = ">=3.7.1", optional = true }
+pytest = { version = ">=8.3.3", optional = true }
+ruff = { version = ">=0.8.1", optional = true }
+
+[project.optional-dependencies]
+dev = ["mypy", "pre-commit", "pytest", "ruff", "click"]
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+pattern = "default-unprefixed"
+format-jinja = """
+    {%- if distance == 0 -%}
+        {%- if stage is none -%}
+            {{ base }}
+        {%- else -%}
+            {{ base }}-{{stage}}{{revision}}
+        {%- endif -%}
+    {%- else -%}
+        {%- if stage is none -%}
+            {{ base }}-dev{{ distance }}
+        {%- else -%}
+            {{ base }}-{{stage}}{{revision}}.dev{{ distance }}
+        {%- endif -%}
+    {%- endif -%}
+"""
+#format-jinja = """
+#    {%- if distance == 0 -%}
+#        {{ serialize_pep440(base, stage, revision) }}
+#    {%- else -%}
+#        {{ serialize_pep440(base, stage, revision, dev=distance) }}
+#    {%- endif -%}
+#"""
+style = "semver"
+bump = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
