@@ -14,7 +14,6 @@ usage() {
   echo "${USAGE_TEXT}"
 }
 
-EXTRAS='--extras'
 EDITABLE=1
 
 while getopts adilpsh flag; do
@@ -22,7 +21,7 @@ while getopts adilpsh flag; do
   # automated
   a) : ;;
   # development
-  d) EXTRAS="${EXTRAS} --extras dev" ;;
+  d) EXTRAS="--extras dev" ;;
   # non-editable
   i) EDITABLE= ;;
   h)
