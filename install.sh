@@ -14,7 +14,7 @@ usage() {
   echo "${USAGE_TEXT}"
 }
 
-EXTRAS='--extras upnp'
+EXTRAS='--extras'
 EDITABLE=1
 
 while getopts adilpsh flag; do

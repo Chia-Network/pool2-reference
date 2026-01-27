@@ -130,4 +130,4 @@ jobs:
 
       - name: Test code with pytest
         run: |
-          pytest chia-pool\tests
+          pytest .
