@@ -87,6 +87,7 @@ jobs:
       - uses: chia-network/actions/activate-venv@main
 
       - name: Verify source and installed tests collect and match
+        shell: bash
         run: |
           echo '==== collecting source tests ===='
           if pytest --collect-only -qq --import-mode=prepend chia-pool/tests > source_tests_raw
