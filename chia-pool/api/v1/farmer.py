@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, final
+from typing import Literal
 
+from api.rest import APIEndpoint
 from chia_rs import CoinSpend, G1Element, G2Element, ProofOfSpace
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
@@ -128,15 +128,6 @@ class PoolErrorCode(Enum):
 class ErrorResponse(TypedDict):
     error_code: uint16
     error_message: str | None
-
-
-@final
-@dataclass(frozen=True, kw_only=True)
-class APIEndpoint:
-    endpoint_name: str
-    request_type: Literal["GET", "PUT", "POST"]
-    request: type[object] | None
-    response: type[object] | None
 
 
 ENDPOINTS = [
