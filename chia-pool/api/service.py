@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Protocol, Self
 
-from api.v2.node import FullNode
-from api.v2.store import Store
-from api.v2.wallet import Wallet
+from api.node import FullNode
+from api.store import Store
+from api.wallet import Wallet
 from typing_extensions import TypedDict, Unpack
 
 

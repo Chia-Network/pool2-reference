@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol, Self
 
-from api.v2.store import Store
+from api.store import Store
 from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
