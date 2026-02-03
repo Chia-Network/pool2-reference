@@ -61,8 +61,17 @@ class GetPartials(TypedDict):
     since_last_payout: NotRequired[bool]
 
 
+class ConfirmPartials(TypedDict):
+    launcher_id: bytes32
+    until_timestamp: uint64
+
+
+class DeletePartial(TypedDict):
+    launcher_id: bytes32
+    timestamp: uint64
+
+
 class PartialMetadata(TypedDict):
-    index: uint64
     timestamp: uint64
     difficulty: uint64
 
@@ -72,7 +81,8 @@ class GetPartialsResponse(TypedDict):
 
 
 class AddPayout(TypedDict):
-    index: uint64
+    launcher_id: bytes32
+    timestamp: uint64
     payout_details: str
 
 
@@ -85,4 +95,5 @@ class Store(Protocol):
     def get_launcher_ids(self, **kwargs: Unpack[GetLauncherIDs]) -> GetLauncherIDsResponse: ...
     def add_partial(self, **kwargs: Unpack[AddPartial]) -> None: ...
     def get_partials(self, **kwargs: Unpack[GetPartials]) -> GetPartialsResponse: ...
+    def confirm_partials(self, **kwargs: Unpack[ConfirmPartials]) -> None: ...
     def add_payout(self, **kwargs: Unpack[AddPayout]) -> None: ...
