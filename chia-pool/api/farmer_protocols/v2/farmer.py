@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from api.rest import APIEndpoint
+from api.farmer_protocols.rest import APIEndpoint
 from chia_rs import G1Element, G2Element, Program, ProofOfSpace
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
