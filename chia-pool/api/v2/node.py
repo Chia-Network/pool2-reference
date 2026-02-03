@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Protocol, Self
 
-from api.v2.config import Config
 from chia_rs import CoinRecord
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32
@@ -47,7 +46,7 @@ class GetRecentSignagePointOrEOSResponse(TypedDict):
 # Stubs
 class FullNode(Protocol):
     @classmethod
-    def create(cls, *, config: Config) -> Self: ...
+    def create(cls) -> Self: ...
     def get_blockchain_state(self) -> GetBlockchainStateResponse: ...
     def get_coin_records_by_puzzle_hashes(
         self, **kwargs: Unpack[GetCoinRecordsByPuzzleHashes]

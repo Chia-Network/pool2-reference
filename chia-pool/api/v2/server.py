@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Protocol, Self
 
 from api.rest import APIEndpoint
-from api.v2.config import Config
 from api.v2.node import FullNode
 from api.v2.service import Service
 from api.v2.store import Store
@@ -14,7 +13,6 @@ VersionString = str
 
 
 class CreateServer(TypedDict):
-    config: Config
     farmer_rps: dict[VersionString, list[APIEndpoint]]
     node: FullNode
     service: Service

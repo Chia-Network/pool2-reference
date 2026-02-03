@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Protocol, Self
 
-from api.v2.config import Config
 from api.v2.store import Store
 from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
@@ -12,7 +11,6 @@ from typing_extensions import NotRequired, TypedDict, Unpack
 
 # API
 class CreateWallet(TypedDict):
-    config: Config
     store: Store
 
 
