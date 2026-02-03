@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Protocol
+
 from api.rest import APIEndpoint
 from api.v2.config import Config
 from api.v2.node import FullNode
@@ -34,7 +36,7 @@ class HandleRequests(TypedDict):
 
 
 # Stubs
-class Service:
+class Service(Protocol):
     def confirm_partials(self, **kwargs: Unpack[ConfirmPartials]) -> None:
         pass
 

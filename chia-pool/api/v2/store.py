@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Protocol
+
 from chia_rs import G1Element
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
@@ -75,7 +77,7 @@ class AddPayout(TypedDict):
 
 
 # Stubs
-class Store:
+class Store(Protocol):
     def add_farmer(self, **kwargs: Unpack[AddFarmer]) -> None: ...
     def get_farmer(self, **kwargs: Unpack[GetFarmer]) -> GetFarmerResponse: ...
     def update_difficulty(self, **kwargs: Unpack[UpdateDifficulty]) -> None: ...

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Protocol
+
 from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
@@ -39,7 +41,7 @@ class GetTransactionStatusResponse(TypedDict):
 
 
 # Stubs
-class Wallet:
+class Wallet(Protocol):
     def send_transaction(self, **kwargs: Unpack[SendTransaction]) -> SendTransactionResponse: ...
     def submit_transaction(self, **kwargs: Unpack[SubmitTransaction]) -> SubmitTransactionResponse: ...
     def get_transaction_status(self, **kwargs: Unpack[GetTransactionStatus]) -> GetTransactionStatusResponse: ...
