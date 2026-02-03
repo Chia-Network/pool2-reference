@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, Self
 
+from api.v2.config import Config
 from chia_rs import G1Element
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
@@ -9,6 +10,10 @@ from typing_extensions import NotRequired, TypedDict, Unpack
 
 
 # API
+class CreateStore(TypedDict):
+    config: Config
+
+
 class AddFarmer(TypedDict):
     version: uint8
     launcher_id: bytes32
@@ -88,6 +93,8 @@ class AddPayout(TypedDict):
 
 # Stubs
 class Store(Protocol):
+    @classmethod
+    def create(cls, **kwargs: Unpack[CreateStore]) -> Self: ...
     def add_farmer(self, **kwargs: Unpack[AddFarmer]) -> None: ...
     def get_farmer(self, **kwargs: Unpack[GetFarmer]) -> GetFarmerResponse: ...
     def update_difficulty(self, **kwargs: Unpack[UpdateDifficulty]) -> None: ...
