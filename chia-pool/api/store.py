@@ -1,74 +1,32 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Protocol, Self
 
 from chia_rs import G1Element
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
-from typing_extensions import NotRequired, TypedDict, Unpack
+from typing_extensions import TypedDict
 
 
-# API
-class AddFarmer(TypedDict):
-    version: uint8
-    launcher_id: bytes32
-    user_puzzle_hash: bytes32
-    payout_instructions: str
-    difficulty: uint64
-    authentication_public_key: G1Element
-
-
-class GetFarmer(TypedDict):
-    launcher_id: bytes32
-
-
+# Responses
 class GetFarmerResponse(TypedDict):
+    version: uint8
     user_puzzle_hash: bytes32
     payout_instructions: str
     difficulty: uint64
     authentication_public_key: G1Element
-
-
-class UpdateDifficulty(TypedDict):
-    launcher_id: bytes32
-    difficulty: uint64
-
-
-class AddSingleton(TypedDict):
-    launcher_id: bytes32
-    coin_id: bytes32
-    exiting_height: uint32 | None
-
-
-class GetLauncherIDs(TypedDict):
-    start: NotRequired[uint64]
-    count: NotRequired[uint64]
 
 
 class GetLauncherIDsResponse(TypedDict):
     launcher_ids: list[bytes32]
 
 
-class AddPartial(TypedDict):
-    launcher_id: bytes32
-    timestamp: uint64
-    difficulty: uint64
-
-
-class GetPartials(TypedDict):
-    launcher_id: bytes32
-    count: NotRequired[uint64]
-    since_last_payout: NotRequired[bool]
-
-
-class ConfirmPartials(TypedDict):
-    launcher_id: bytes32
-    until_timestamp: uint64
-
-
-class DeletePartial(TypedDict):
-    launcher_id: bytes32
-    timestamp: uint64
+class GetLatestSingletonResponse(TypedDict):
+    coin_id: bytes32
+    created_height: uint32
+    exiting_height: uint32 | None
 
 
 class PartialMetadata(TypedDict):
@@ -80,8 +38,7 @@ class GetPartialsResponse(TypedDict):
     partials: list[PartialMetadata]
 
 
-class AddPayout(TypedDict):
-    launcher_id: bytes32
+class GetLatestPayoutResponse(TypedDict):
     timestamp: uint64
     payout_details: str
 
@@ -89,13 +46,34 @@ class AddPayout(TypedDict):
 # Stubs
 class Store(Protocol):
     @classmethod
-    def create(cls) -> Self: ...
-    def add_farmer(self, **kwargs: Unpack[AddFarmer]) -> None: ...
-    def get_farmer(self, **kwargs: Unpack[GetFarmer]) -> GetFarmerResponse: ...
-    def update_difficulty(self, **kwargs: Unpack[UpdateDifficulty]) -> None: ...
-    def add_singleton(self, **kwargs: Unpack[AddSingleton]) -> None: ...
-    def get_launcher_ids(self, **kwargs: Unpack[GetLauncherIDs]) -> GetLauncherIDsResponse: ...
-    def add_partial(self, **kwargs: Unpack[AddPartial]) -> None: ...
-    def get_partials(self, **kwargs: Unpack[GetPartials]) -> GetPartialsResponse: ...
-    def confirm_partials(self, **kwargs: Unpack[ConfirmPartials]) -> None: ...
-    def add_payout(self, **kwargs: Unpack[AddPayout]) -> None: ...
+    @asynccontextmanager
+    async def create(cls) -> AsyncIterator[Self]:
+        yield cls()
+
+    async def add_farmer(
+        self,
+        *,
+        version: uint8,
+        launcher_id: bytes32,
+        user_puzzle_hash: bytes32,
+        payout_instructions: str,
+        difficulty: uint64,
+        authentication_public_key: G1Element,
+    ) -> None: ...
+    async def get_farmer(self, *, launcher_id: bytes32) -> GetFarmerResponse: ...
+    async def update_difficulty(self, *, launcher_id: bytes32, difficulty: uint64) -> None: ...
+    async def add_singleton(
+        self, *, launcher_id: bytes32, coin_id: bytes32, created_height: uint32, exiting_height: uint32 | None
+    ) -> None: ...
+    async def get_latest_singleton(self, *, launcher_id: bytes32) -> GetLatestSingletonResponse: ...
+    async def get_launcher_ids(
+        self, *, start: uint64 | None = None, count: uint64 | None = None
+    ) -> GetLauncherIDsResponse: ...
+    async def add_partial(self, *, launcher_id: bytes32, timestamp: uint64, difficulty: uint64) -> None: ...
+    async def get_partials(
+        self, *, launcher_id: bytes32, since: uint64 | None = None, confirmed_only: bool = True
+    ) -> GetPartialsResponse: ...
+    async def confirm_partials(self, *, launcher_id: bytes32, until_timestamp: uint64) -> None: ...
+    async def delete_partial(self, *, launcher_id: bytes32, timestamp: uint64) -> None: ...
+    async def add_payout(self, *, launcher_id: bytes32, timestamp: uint64, payout_details: str) -> None: ...
+    async def get_latest_payout(self, *, launcher_id: bytes32) -> GetLatestPayoutResponse | None: ...
