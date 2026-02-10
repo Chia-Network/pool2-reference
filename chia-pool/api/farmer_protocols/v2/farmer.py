@@ -43,8 +43,9 @@ class GetPoolInfoResponse(TypedDict):
     protocol_version: uint8
     fee: str
     description: str
-    pool_puzzle_hash: bytes32
+    target_puzzle_hash: bytes32
     authentication_token_timeout: uint8
+    pool_memoization: Program
 
 
 class PartialPayload(TypedDict):
