@@ -29,6 +29,7 @@ def full_node_service(
     one_node: tuple[list[SimulatorFullNodeService], list[WalletService], BlockTools],  # noqa: F811
 ) -> Iterator[SimulatorFullNodeService]:
     one_node[0][0].service_config["selected_network"] = "simulator"
+    assert one_node[0][0].rpc_server is not None
     config_path = pathlib.Path.home().joinpath(CONFIG_FILE_NAME)
     try:
         config_path.touch()
