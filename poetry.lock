@@ -650,4 +650,4 @@ dev = ["click", "mypy", "pre-commit", "pytest", "ruff"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <4"
-content-hash = "bef6e9c0f1af7ba84ffd99fe2a6c03bcee514b221a91207aa2f6baa480d26fbd"
+content-hash = "b33e3fa1d2a7264ef06535316fc838086f0adc1b44317dd71e47be353f349c4a"

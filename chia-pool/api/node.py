@@ -1,41 +1,27 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Protocol, Self
 
 from chia_rs import CoinRecord
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32
-from typing_extensions import TypedDict, Unpack
+from typing_extensions import TypedDict
 
 
-# API
+# Responses
 class GetBlockchainStateResponse(TypedDict):
     peak: uint32
     synced: bool
-
-
-class GetCoinRecordsByPuzzleHashes(TypedDict):
-    puzzle_hashes: list[bytes32]
 
 
 class GetCoinRecordsByPuzzleHashesResponse(TypedDict):
     coin_records: list[CoinRecord]
 
 
-class GetCoinRecordByName(TypedDict):
-    coin_id: bytes32
-
-
 class GetCoinRecordByNameResponse(TypedDict):
-    coin_records: CoinRecord
-
-
-class GetRecentSignagePoint(TypedDict):
-    signage_point_hash: bytes32
-
-
-class GetRecentEndOfSubslot(TypedDict):
-    challenge_hash: bytes32
+    coin_record: CoinRecord
 
 
 class GetRecentSignagePointOrEOSResponse(TypedDict):
@@ -46,15 +32,14 @@ class GetRecentSignagePointOrEOSResponse(TypedDict):
 # Stubs
 class FullNode(Protocol):
     @classmethod
-    def create(cls) -> Self: ...
-    def get_blockchain_state(self) -> GetBlockchainStateResponse: ...
-    def get_coin_records_by_puzzle_hashes(
-        self, **kwargs: Unpack[GetCoinRecordsByPuzzleHashes]
+    @asynccontextmanager
+    async def create(cls) -> AsyncIterator[Self]:
+        yield cls()
+
+    async def get_blockchain_state(self) -> GetBlockchainStateResponse: ...
+    async def get_coin_records_by_puzzle_hashes(
+        self, *, puzzle_hashes: list[bytes32], include_spent_coins: bool, start_height: uint32
     ) -> GetCoinRecordsByPuzzleHashesResponse: ...
-    def get_coin_record_by_name(self, **kwargs: Unpack[GetCoinRecordByName]) -> GetCoinRecordByNameResponse: ...
-    def get_recent_signage_point(
-        self, **kwargs: Unpack[GetRecentSignagePoint]
-    ) -> GetRecentSignagePointOrEOSResponse: ...
-    def get_recent_end_of_subslot(
-        self, **kwargs: Unpack[GetRecentEndOfSubslot]
-    ) -> GetRecentSignagePointOrEOSResponse: ...
+    async def get_coin_record_by_name(self, *, coin_id: bytes32) -> GetCoinRecordByNameResponse: ...
+    async def get_recent_signage_point(self, *, signage_point_hash: bytes32) -> GetRecentSignagePointOrEOSResponse: ...
+    async def get_recent_end_of_subslot(self, *, challenge_hash: bytes32) -> GetRecentSignagePointOrEOSResponse: ...
