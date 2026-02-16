@@ -1,43 +1,29 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Protocol, Self
 
-from api.store import Store
 from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
-from typing_extensions import NotRequired, TypedDict, Unpack
+from typing_extensions import TypedDict
 
 
 # API
-class CreateWallet(TypedDict):
-    store: Store
-
-
-class CreateCoin(TypedDict):
+@dataclass(frozen=True, kw_only=True)
+class Payment:
     amount: uint64
     puzzle_hash: bytes32
-    memos: NotRequired[list[str]]
-
-
-class SendTransaction(TypedDict):
-    payments: list[CreateCoin]
-    fee: uint64
+    memos: list[str] | None
 
 
 class SendTransactionResponse(TypedDict):
-    tx_id: bytes32
-
-
-class SubmitTransaction(TypedDict):
-    spend_bundle: SpendBundle
+    tx_ids: list[bytes32]
 
 
 class SubmitTransactionResponse(TypedDict):
-    tx_id: bytes32
-
-
-class GetTransactionStatus(TypedDict):
     tx_id: bytes32
 
 
@@ -48,7 +34,10 @@ class GetTransactionStatusResponse(TypedDict):
 # Stubs
 class Wallet(Protocol):
     @classmethod
-    def create(cls, **kwargs: Unpack[CreateWallet]) -> Self: ...
-    def send_transaction(self, **kwargs: Unpack[SendTransaction]) -> SendTransactionResponse: ...
-    def submit_transaction(self, **kwargs: Unpack[SubmitTransaction]) -> SubmitTransactionResponse: ...
-    def get_transaction_status(self, **kwargs: Unpack[GetTransactionStatus]) -> GetTransactionStatusResponse: ...
+    @asynccontextmanager
+    async def create(cls) -> AsyncIterator[Self]:
+        yield cls()
+
+    async def send_transaction(self, *, payments: list[Payment], fee: uint64) -> SendTransactionResponse: ...
+    async def submit_transaction(self, *, spend_bundle: SpendBundle, fee: uint64) -> SubmitTransactionResponse: ...
+    async def get_transaction_status(self, *, tx_id: bytes32) -> GetTransactionStatusResponse: ...
