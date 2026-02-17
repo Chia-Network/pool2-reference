@@ -191,14 +191,17 @@ class Store:
             )
 
     async def get_partials(
-        self, *, launcher_id: bytes32, since: uint64 | None = None, confirmed_only: bool = True
+        self, *, launcher_id: bytes32, confirmed: bool, since: uint64 | None = None, before: uint64 | None = None
     ) -> GetPartialsResponse:
         async with self.get_connection() as conn:
             cursor = await conn.execute(
                 "SELECT * from partials WHERE launcher_id = ?"  # noqa: S608
-                + (" AND confirmed = TRUE" if confirmed_only else "")
-                + (" AND timestamp >= ?" if since is not None else ""),
-                (launcher_id,) if since is None else (launcher_id, since),
+                + (" AND confirmed = TRUE" if confirmed else " AND confirmed = FALSE")
+                + (" AND timestamp >= ?" if since is not None else "")
+                + (" AND timestamp < ?" if before is not None else ""),
+                tuple(
+                    [launcher_id] + ([since] if since is not None else []) + ([before] if before is not None else [])
+                ),
             )
             rows = await cursor.fetchall()
             if rows is None:

@@ -137,8 +137,10 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
                 timestamp=uint64(i),
                 difficulty=uint64(i),
             )
-        assert await store.get_partials(launcher_id=farmer_1_launcher_id) == GetPartialsResponse(partials=[])
-        assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed_only=False) == GetPartialsResponse(
+        assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True) == GetPartialsResponse(
+            partials=[]
+        )
+        assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=False) == GetPartialsResponse(
             partials=[
                 PartialMetadata(
                     timestamp=uint64(i),
@@ -148,7 +150,7 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
             ]
         )
         assert await store.get_partials(
-            launcher_id=farmer_1_launcher_id, confirmed_only=False, since=uint64(1)
+            launcher_id=farmer_1_launcher_id, confirmed=False, since=uint64(1)
         ) == GetPartialsResponse(
             partials=[
                 PartialMetadata(
@@ -158,8 +160,19 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
                 for i in range(1, 3)
             ]
         )
+        assert await store.get_partials(
+            launcher_id=farmer_1_launcher_id, confirmed=False, before=uint64(1)
+        ) == GetPartialsResponse(
+            partials=[
+                PartialMetadata(
+                    timestamp=uint64(i),
+                    difficulty=uint64(i),
+                )
+                for i in range(1)
+            ]
+        )
         await store.confirm_partials(launcher_id=farmer_1_launcher_id, until_timestamp=uint64(1))
-        assert await store.get_partials(launcher_id=farmer_1_launcher_id) == GetPartialsResponse(
+        assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True) == GetPartialsResponse(
             partials=[
                 PartialMetadata(
                     timestamp=uint64(i),
@@ -168,7 +181,9 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
                 for i in range(2)
             ]
         )
-        assert await store.get_partials(launcher_id=farmer_1_launcher_id, since=uint64(1)) == GetPartialsResponse(
+        assert await store.get_partials(
+            launcher_id=farmer_1_launcher_id, confirmed=True, since=uint64(1)
+        ) == GetPartialsResponse(
             partials=[
                 PartialMetadata(
                     timestamp=uint64(i),
@@ -177,17 +192,24 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
                 for i in range(1, 2)
             ]
         )
-        await store.delete_partial(launcher_id=farmer_1_launcher_id, timestamp=uint64(2))
-        assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed_only=False) == GetPartialsResponse(
+        assert await store.get_partials(
+            launcher_id=farmer_1_launcher_id, confirmed=True, since=uint64(0), before=uint64(1)
+        ) == GetPartialsResponse(
             partials=[
                 PartialMetadata(
                     timestamp=uint64(i),
                     difficulty=uint64(i),
                 )
-                for i in range(2)
+                for i in range(1)
             ]
         )
-        assert await store.get_partials(launcher_id=farmer_2_launcher_id) == GetPartialsResponse(partials=[])
+        await store.delete_partial(launcher_id=farmer_1_launcher_id, timestamp=uint64(2))
+        assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=False) == GetPartialsResponse(
+            partials=[]
+        )
+        assert await store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=True) == GetPartialsResponse(
+            partials=[]
+        )
         await store.add_payout(
             launcher_id=farmer_1_launcher_id, timestamp=uint64(2), payout_details=farmer_1_payout_instructions
         )
