@@ -7,11 +7,13 @@ from typing import TYPE_CHECKING
 import pytest
 import yaml
 from api.store import (
+    ClaimMetadata,
     GetFarmerResponse,
     GetLatestPayoutResponse,
     GetLatestSingletonResponse,
     GetLauncherIDsResponse,
     GetPartialsResponse,
+    GetRewardClaimsResponse,
     PartialMetadata,
     Store,
 )
@@ -210,11 +212,14 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
         assert await store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=True) == GetPartialsResponse(
             partials=[]
         )
-        await store.add_payout(
-            launcher_id=farmer_1_launcher_id, timestamp=uint64(2), payout_details=farmer_1_payout_instructions
-        )
-        assert await store.get_latest_payout(launcher_id=farmer_1_launcher_id) == GetLatestPayoutResponse(
+        await store.add_payout(timestamp=uint64(2), payout_details=farmer_1_payout_instructions)
+        assert await store.get_latest_payout() == GetLatestPayoutResponse(
             payout_details=farmer_1_payout_instructions,
             timestamp=uint64(2),
         )
-        assert await store.get_latest_payout(launcher_id=farmer_2_launcher_id) is None
+        await store.add_reward_claim(timestamp=uint64(1), amount=uint64(100))
+        assert await store.get_unpaid_reward_claims() == GetRewardClaimsResponse(
+            claims=[ClaimMetadata(timestamp=uint64(1), amount=uint64(100))]
+        )
+        await store.set_claims_statuses(timestamps=[uint64(1)])
+        assert await store.get_unpaid_reward_claims() == GetRewardClaimsResponse(claims=[])

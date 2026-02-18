@@ -8,11 +8,13 @@ from typing import Self
 import aiosqlite
 import yaml
 from api.store import (
+    ClaimMetadata,
     GetFarmerResponse,
     GetLatestPayoutResponse,
     GetLatestSingletonResponse,
     GetLauncherIDsResponse,
     GetPartialsResponse,
+    GetRewardClaimsResponse,
     PartialMetadata,
 )
 from chia_rs import G1Element
@@ -60,8 +62,10 @@ class Store:
                 "confirmed boolean)"
             )
             await store.connection.execute(
-                "CREATE TABLE IF NOT EXISTS payouts"
-                "(launcher_id blob PRIMARY KEY, timestamp blob, payout_details string)"
+                "CREATE TABLE IF NOT EXISTS claims(timestamp bigint PRIMARY KEY, amount bigint, confirmed boolean)"
+            )
+            await store.connection.execute(
+                "CREATE TABLE IF NOT EXISTS payouts(timestamp bigint PRIMARY KEY, payout_details string)"
             )
 
             await store.connection.commit()
@@ -222,20 +226,41 @@ class Store:
                 (launcher_id, timestamp),
             )
 
-    async def add_payout(self, *, launcher_id: bytes32, timestamp: uint64, payout_details: str) -> None:
+    async def add_reward_claim(self, *, timestamp: uint64, amount: uint64) -> None:
         async with self.get_connection() as conn:
             await conn.execute(
-                "INSERT INTO payouts (launcher_id, timestamp, payout_details) VALUES (?, ?, ?)",
-                (launcher_id, timestamp, payout_details),
+                "INSERT OR REPLACE INTO claims (timestamp, amount, confirmed) VALUES (?, ?, FALSE)",
+                (timestamp, amount),
             )
 
-    async def get_latest_payout(self, *, launcher_id: bytes32) -> GetLatestPayoutResponse | None:
+    async def set_claims_statuses(self, *, timestamps: list[uint64]) -> None:
+        async with self.get_connection() as conn:
+            await conn.execute(
+                f"UPDATE claims SET confirmed = TRUE WHERE timestamp IN ({','.join(['?'] * len(timestamps))})",  # noqa: S608
+                tuple(timestamps),
+            )
+
+    async def get_unpaid_reward_claims(self) -> GetRewardClaimsResponse:
         async with self.get_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM payouts WHERE launcher_id = ? ORDER BY timestamp DESC LIMIT 1",
-                (launcher_id,),
+                "SELECT * FROM claims WHERE confirmed = FALSE",
+            )
+            rows = await cursor.fetchall()
+            return GetRewardClaimsResponse(claims=[ClaimMetadata(timestamp=row[0], amount=row[1]) for row in rows])
+
+    async def add_payout(self, *, timestamp: uint64, payout_details: str) -> None:
+        async with self.get_connection() as conn:
+            await conn.execute(
+                "INSERT INTO payouts (timestamp, payout_details) VALUES (?, ?)",
+                (timestamp, payout_details),
+            )
+
+    async def get_latest_payout(self) -> GetLatestPayoutResponse | None:
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM payouts ORDER BY timestamp DESC LIMIT 1",
             )
             row = await cursor.fetchone()
             if row is None:
                 return None
-            return GetLatestPayoutResponse(timestamp=row[1], payout_details=row[2])
+            return GetLatestPayoutResponse(timestamp=row[0], payout_details=row[1])
