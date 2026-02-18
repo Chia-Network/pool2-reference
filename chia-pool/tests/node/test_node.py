@@ -79,18 +79,20 @@ async def test_rpc_wrapper(full_node_service: SimulatorFullNodeService) -> None:
             puzzle_hashes=[ACS.get_tree_hash()], include_spent_coins=False, start_height=uint32(NUM_BLOCKS)
         )
         assert len(puzhashes_response["coin_records"]) == REWARDS_PER_BLOCK
-        await rpc_client.get_coin_record_by_name(coin_id=puzhashes_response["coin_records"][0].coin.name())
+        spent_coin = puzhashes_response["coin_records"][0].coin
+        await rpc_client.get_coin_record_by_name(coin_id=spent_coin.name())
         with pytest.raises(ResponseFailureError, match=f"Coin record 0x{bytes32.zeros.hex()} not found"):
             await rpc_client.get_coin_record_by_name(coin_id=bytes32.zeros)
         # spend one of the coins
         await rpc_client.client.push_tx(
             spend_bundle=SpendBundle(
-                [make_spend(puzhashes_response["coin_records"][0].coin, ACS, Program.to(None))],
+                [make_spend(spent_coin, ACS, Program.to(None))],
                 aggregated_signature=G2Element(),
             )
         )
         await full_node_service._api.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True)
         await full_node_service._api.wait_for_self_synced()
+        spent_height = (await rpc_client.get_blockchain_state())["peak"]
         # check include_spent_coins working
         puzhashes_response = await rpc_client.get_coin_records_by_puzzle_hashes(
             puzzle_hashes=[ACS.get_tree_hash()], include_spent_coins=False, start_height=uint32(0)
@@ -107,3 +109,7 @@ async def test_rpc_wrapper(full_node_service: SimulatorFullNodeService) -> None:
         assert (await rpc_client.get_recent_end_of_subslot(challenge_hash=challenge_hash))["exists"]
         assert not (await rpc_client.get_recent_signage_point(signage_point_hash=bytes32.zeros))["exists"]
         assert not (await rpc_client.get_recent_end_of_subslot(challenge_hash=bytes32.zeros))["exists"]
+        # test the spend fetching
+        spends_response = await rpc_client.get_puzzle_solution(coin_id=spent_coin.name(), height=spent_height)
+        assert spends_response["spend"].coin == spent_coin
+        assert spends_response["spend"].puzzle_reveal.get_tree_hash() == ACS.get_tree_hash()

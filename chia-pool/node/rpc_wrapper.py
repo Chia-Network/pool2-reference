@@ -10,6 +10,7 @@ from api.node import (
     GetBlockchainStateResponse,
     GetCoinRecordByNameResponse,
     GetCoinRecordsByPuzzleHashesResponse,
+    GetPuzzleAndSolutionResponse,
     GetRecentSignagePointOrEOSResponse,
 )
 from chia.full_node.full_node_rpc_client import FullNodeRpcClient
@@ -75,3 +76,8 @@ class NodeRPC:
         except ResponseFailureError:
             return GetRecentSignagePointOrEOSResponse(exists=False, reverted=False)
         return GetRecentSignagePointOrEOSResponse(exists=True, reverted=dict_response["reverted"])
+
+    async def get_puzzle_solution(self, *, coin_id: bytes32, height: uint32) -> GetPuzzleAndSolutionResponse:
+        return GetPuzzleAndSolutionResponse(
+            spend=await self.client.get_puzzle_and_solution(coin_id=coin_id, height=height)
+        )
