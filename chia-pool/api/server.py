@@ -1,29 +1,31 @@
 from __future__ import annotations
 
-from typing import Protocol, Self
+from collections.abc import AsyncIterator, Callable, Coroutine
+from contextlib import asynccontextmanager
+from typing import Any, Protocol
 
-from api.farmer_protocols.rest import APIEndpoint
-from api.node import FullNode
+from api.farmer_protocols.rest import APIEndpointMetadata
 from api.service import Service
-from api.store import Store
-from api.wallet import Wallet
-from typing_extensions import TypedDict, Unpack
+from chia.util.streamable import Streamable
+from chia_rs.sized_bytes import bytes32
 
 VersionString = str
 
 
-class CreateServer(TypedDict):
-    farmer_rps: dict[VersionString, list[APIEndpoint]]
-    node: FullNode
-    service: Service
-    store: Store
-    wallet: Wallet
-
-
-class Server(Protocol):
+class TaskServer(Protocol):
     @classmethod
-    def create(cls, **kwargs: Unpack[CreateServer]) -> Self: ...
-    def start_pool_tasks(self) -> None: ...
-    def stop_pool_tasks(self) -> None: ...
-    def start_farmer_rpc(self) -> None: ...
-    def stop_farmer_rpc(self) -> None: ...
+    @asynccontextmanager
+    async def create_pooling_tasks(cls, *, service: Service) -> AsyncIterator[None]:
+        yield None
+
+
+class RPCServer(Protocol):
+    @asynccontextmanager
+    async def create_rpc(
+        self,
+        *,
+        farmer_rpcs: dict[VersionString, list[APIEndpointMetadata]],
+        handlers: dict[VersionString, dict[str, Callable[[Streamable | None], Coroutine[Any, Any, Streamable | None]]]],
+        token_sk: bytes32,
+    ) -> AsyncIterator[None]:
+        yield None
