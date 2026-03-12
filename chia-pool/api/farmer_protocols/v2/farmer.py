@@ -1,25 +1,27 @@
 from __future__ import annotations
 
-from enum import Enum
+from dataclasses import dataclass
 
-from api.farmer_protocols.rest import APIEndpoint
+from api.farmer_protocols.rest import APIEndpointMetadata
+from api.store import PartialMetadata
+from chia.util.streamable import Streamable, streamable
 from chia_rs import G1Element, G2Element, Program, ProofOfSpace
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
-from typing_extensions import NotRequired, TypedDict
 
 
 # Schema
-class GetLoginRequest(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class GetLoginRequest(Streamable):
+    launcher_id: bytes32
+    timestamp: uint64
     signature: G2Element
 
 
-class PartialMetadata(TypedDict):
-    timestamp: uint64
-    difficulty: uint64
-
-
-class FarmerRecord(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class FarmerRecord(Streamable):
     launcher_id: bytes32
     coin_id: bytes32
     pool_puzzle_hash: bytes32
@@ -29,26 +31,31 @@ class FarmerRecord(TypedDict):
     exiting: bool
 
 
-class GetLoginReponse(TypedDict):
-    farmer_record: NotRequired[FarmerRecord]
-    recent_partials: NotRequired[list[PartialMetadata]]
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class GetLoginResponse(Streamable):
+    recent_partials: list[PartialMetadata]
     authentication_token: str
 
 
-class GetPoolInfoResponse(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class GetPoolInfoResponse(Streamable):
     name: str
     logo_url: str
     minimum_difficulty: uint64
     relative_lock_height: uint32
     protocol_version: uint8
-    fee: str
+    fee: uint16
     description: str
     target_puzzle_hash: bytes32
     authentication_token_timeout: uint8
     pool_memoization: Program
 
 
-class PartialPayload(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class PartialPayload(Streamable):
     launcher_id: bytes32
     proof_of_space: ProofOfSpace
     sp_hash: bytes32
@@ -56,105 +63,98 @@ class PartialPayload(TypedDict):
     harvester_id: bytes32
 
 
-class PostPartialRequest(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class PostPartialRequest(Streamable):
     payload: PartialPayload
     aggregate_signature: G2Element
+    authentication_token: str
 
 
-class PostPartialResponse(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class PostPartialResponse(Streamable):
     new_difficulty: uint64
 
 
-class GetFarmerRequest(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class GetFarmerRequest(Streamable):
     authentication_token: str
     launcher_id: bytes32
 
 
-class GetFarmerResponse(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class GetFarmerResponse(Streamable):
     authentication_public_key: G1Element
     payout_instructions: str
     current_difficulty: uint64
 
 
-class FarmerPayload(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class FarmerPayload(Streamable):
     launcher_id: bytes32
-    authentication_public_key: NotRequired[G1Element | None]
-    payout_instructions: NotRequired[str | None]
-    suggested_difficulty: NotRequired[uint64 | None]
+    authentication_public_key: G1Element | None = None
+    payout_instructions: str | None = None
+    suggested_difficulty: uint64 | None = None
 
 
-class FarmerRequest(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class FarmerRequest(Streamable):
     payload: FarmerPayload
     signature: G2Element
+    authentication_token: str | None = None
 
 
-class PostFarmerResponse(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class PostFarmerResponse(Streamable):
     welcome_message: str
 
 
-class PutFarmerResponse(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class PutFarmerResponse(Streamable):
     authentication_public_key: bool | None
     payout_instructions: bool | None
     suggested_difficulty: bool | None
 
 
-# Collected API
-class PoolErrorCode(Enum):
-    REVERTED_SIGNAGE_POINT = 1
-    TOO_LATE = 2
-    NOT_FOUND = 3
-    INVALID_PROOF = 4
-    PROOF_NOT_GOOD_ENOUGH = 5
-    INVALID_DIFFICULTY = 6
-    INVALID_SIGNATURE = 7
-    SERVER_EXCEPTION = 8
-    INVALID_P2_SINGLETON_PUZZLE_HASH = 9
-    FARMER_NOT_KNOWN = 10
-    FARMER_ALREADY_KNOWN = 11
-    INVALID_AUTHENTICATION_TOKEN = 12
-    INVALID_PAYOUT_INSTRUCTIONS = 13
-    INVALID_SINGLETON = 14
-    DELAY_TIME_TOO_SHORT = 15
-    REQUEST_FAILED = 16
-
-
-class ErrorResponse(TypedDict):
-    error_code: uint16
-    error_message: str | None
-
-
 ENDPOINTS = [
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="get_login",
         request_type="GET",
         request=GetLoginRequest,
-        response=GetLoginReponse,
+        response=GetLoginResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="get_farmer",
         request_type="GET",
         request=GetFarmerRequest,
         response=GetFarmerResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="post_farmer",
         request_type="POST",
         request=FarmerRequest,
         response=PostFarmerResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="put_farmer",
         request_type="PUT",
         request=FarmerRequest,
         response=PutFarmerResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="get_pool_info",
         request_type="GET",
         request=None,
         response=GetPoolInfoResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="post_partial",
         request_type="POST",
         request=PostPartialRequest,

@@ -30,9 +30,10 @@ class LoggingConfigSchema(Schema):
 
 class PoolInfoConfigSchema(Schema):
     name = fields.Str(required=True)
-    log_url = fields.URL(required=True)
+    logo_url = fields.URL(required=True)
     description = fields.Str(required=True)
     welcome_message = fields.Str(required=True)
+    minimum_difficulty = fields.Int(required=True)
 
 
 class WebConfigSchema(Schema):
@@ -64,9 +65,10 @@ class LoggingConfig(TypedDict):
 
 class PoolInfoConfig(TypedDict):
     name: str
-    log_url: str
+    logo_url: str
     description: str
     welcome_message: str
+    minimum_difficulty: uint64
 
 
 class WebConfig(TypedDict):

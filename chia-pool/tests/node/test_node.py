@@ -110,6 +110,6 @@ async def test_rpc_wrapper(full_node_service: SimulatorFullNodeService) -> None:
         assert not (await rpc_client.get_recent_signage_point(signage_point_hash=bytes32.zeros))["exists"]
         assert not (await rpc_client.get_recent_end_of_subslot(challenge_hash=bytes32.zeros))["exists"]
         # test the spend fetching
-        spends_response = await rpc_client.get_puzzle_solution(coin_id=spent_coin.name(), height=spent_height)
+        spends_response = await rpc_client.get_puzzle_and_solution(coin_id=spent_coin.name(), height=spent_height)
         assert spends_response["spend"].coin == spent_coin
         assert spends_response["spend"].puzzle_reveal.get_tree_hash() == ACS.get_tree_hash()

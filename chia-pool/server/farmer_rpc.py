@@ -3,32 +3,38 @@ from __future__ import annotations
 import ssl
 from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import asynccontextmanager
+from types import NoneType
 from typing import Any, get_type_hints
 
 from aiohttp import web
-from api.farmer_protocols.rest import APIEndpointMetadata
-from api.farmer_protocols.v2.farmer import ErrorResponse, PoolErrorCode
+from api.farmer_protocols.rest import APIEndpointMetadata, ErrorResponse, FarmerRPCError, PoolErrorCode
 from api.server import VersionString
+from api.service import Service
 from chia.util.streamable import Streamable
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16
-from server.config import canonical_load_config
+from server.config import Config, canonical_load_config
 
 
 def _wrap_http_handler(
-    func: Callable[[Streamable | None, bytes32], Coroutine[Any, Any, Streamable | None]], token_sk: bytes32
+    func: Callable[[Streamable | None, Service, Config, bytes32], Coroutine[Any, Any, Streamable | None]],
+    service: Service,
+    config: Config,
+    token_sk: bytes32,
 ) -> Callable[[web.Request], Coroutine[Any, Any, web.Response]]:
     hints = get_type_hints(func)
     request_class = hints["request"]
 
     async def inner(request: web.Request) -> web.Response:
         try:
-            if request_class is None:
+            if request_class is NoneType:
                 deserialized_request = None
             else:
                 assert issubclass(request_class, Streamable)
                 deserialized_request = request_class.from_json_dict(await request.json())  # type: ignore[arg-type]
-            res_object = await func(deserialized_request, token_sk)
+            res_object = await func(deserialized_request, service, config, token_sk)
+        except FarmerRPCError as e:
+            res_object = ErrorResponse(error_code=uint16(e.code.value), error_message=e.message)
         except Exception as e:
             if len(e.args) > 0:
                 res_object = ErrorResponse(
@@ -57,8 +63,9 @@ class FarmerRPCServer:
         farmer_rpcs: dict[VersionString, list[APIEndpointMetadata]],
         handlers: dict[
             VersionString,
-            dict[str, Callable[[Streamable | None, bytes32], Coroutine[Any, Any, Streamable | None]]],
+            dict[str, Callable[[Streamable | None, Service, Config, bytes32], Coroutine[Any, Any, Streamable | None]]],
         ],
+        service: Service,
         token_sk: bytes32,
     ) -> AsyncIterator[None]:
         self = cls()
@@ -66,7 +73,7 @@ class FarmerRPCServer:
         app = web.Application()
         for version_string, endpoint_metadatas in farmer_rpcs.items():
             for route in endpoint_metadatas:
-                handler = _wrap_http_handler(handlers[version_string][route.endpoint_name], token_sk)
+                handler = _wrap_http_handler(handlers[version_string][route.endpoint_name], service, config, token_sk)
                 app.router.add_route(
                     method=route.request_type,
                     path=f"/{version_string}/{route.endpoint_name}",

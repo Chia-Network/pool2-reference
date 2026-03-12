@@ -18,7 +18,7 @@ from chia_rs.sized_ints import uint32, uint64
 from service.config import CONFIG_FILE_NAME, ServiceConfig, load
 
 
-def check_partial(partial: PartialMetadata) -> bool:
+async def confirm_partial(partial: PartialMetadata) -> bool:  # noqa: RUF029
     # TODO: Implement partial confirmation check logic
     return True
 
@@ -61,8 +61,8 @@ class Service:
                 before=target_timestamp,
             )
             for partial in partials_response["partials"]:
-                if not check_partial(partial):
-                    await self.store.delete_partial(launcher_id=launcher_id, timestamp=partial["timestamp"])
+                if not await confirm_partial(partial):
+                    await self.store.delete_partial(launcher_id=launcher_id, timestamp=partial.timestamp)
 
             await self.store.confirm_partials(launcher_id=launcher_id, until_timestamp=target_timestamp)
 
@@ -180,7 +180,7 @@ class Service:
                 )
             )["partials"]
             if len(unpaid_partials) > 0:
-                user_difficulty_points[launcher_id] = sum(partial["difficulty"] for partial in unpaid_partials)
+                user_difficulty_points[launcher_id] = sum(partial.difficulty for partial in unpaid_partials)
                 user_payout_instructions[launcher_id] = (await self.store.get_farmer(launcher_id=launcher_id))[
                     "payout_instructions"
                 ]

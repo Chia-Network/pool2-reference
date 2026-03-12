@@ -45,7 +45,6 @@ class Store:
                 "CREATE TABLE IF NOT EXISTS farmers("
                 "launcher_id blob PRIMARY KEY, "
                 "version int, "
-                "user_puzzle_hash blob, "
                 "payout_instructions string, "
                 "difficulty bigint, "
                 "authentication_public_key blob)"
@@ -97,7 +96,6 @@ class Store:
         *,
         version: uint8,
         launcher_id: bytes32,
-        user_puzzle_hash: bytes32,
         payout_instructions: str,
         difficulty: uint64,
         authentication_public_key: G1Element,
@@ -105,12 +103,11 @@ class Store:
         async with self.get_connection() as conn:
             await conn.execute(
                 "INSERT OR REPLACE INTO farmers "
-                "(version, launcher_id, user_puzzle_hash, payout_instructions, difficulty, authentication_public_key) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "(version, launcher_id, payout_instructions, difficulty, authentication_public_key) "
+                "VALUES (?, ?, ?, ?, ?)",
                 (
                     version,
                     launcher_id,
-                    user_puzzle_hash,
                     payout_instructions,
                     difficulty,
                     bytes(authentication_public_key),
@@ -128,10 +125,9 @@ class Store:
                 raise ValueError(f"Farmer not found for launcher ID {launcher_id.hex()}")
             return GetFarmerResponse(
                 version=uint8(row[1]),
-                user_puzzle_hash=bytes32(row[2]),
-                payout_instructions=row[3],
-                difficulty=uint64(row[4]),
-                authentication_public_key=G1Element.from_bytes(row[5]),
+                payout_instructions=row[2],
+                difficulty=uint64(row[3]),
+                authentication_public_key=G1Element.from_bytes(row[4]),
             )
 
     async def update_difficulty(self, *, launcher_id: bytes32, difficulty: uint64) -> None:

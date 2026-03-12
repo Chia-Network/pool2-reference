@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Protocol, Self
 
+from chia.util.streamable import Streamable, streamable
 from chia_rs import G1Element
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
@@ -13,7 +15,6 @@ from typing_extensions import TypedDict
 # Responses
 class GetFarmerResponse(TypedDict):
     version: uint8
-    user_puzzle_hash: bytes32
     payout_instructions: str
     difficulty: uint64
     authentication_public_key: G1Element
@@ -29,7 +30,9 @@ class GetLatestSingletonResponse(TypedDict):
     exiting_height: uint32 | None
 
 
-class PartialMetadata(TypedDict):
+@streamable
+@dataclass(frozen=True, kw_only=True)
+class PartialMetadata(Streamable):
     timestamp: uint64
     difficulty: uint64
 
@@ -64,7 +67,6 @@ class Store(Protocol):
         *,
         version: uint8,
         launcher_id: bytes32,
-        user_puzzle_hash: bytes32,
         payout_instructions: str,
         difficulty: uint64,
         authentication_public_key: G1Element,

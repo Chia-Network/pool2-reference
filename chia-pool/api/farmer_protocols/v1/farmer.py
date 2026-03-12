@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal
 
-from api.farmer_protocols.rest import APIEndpoint
+from api.farmer_protocols.rest import APIEndpointMetadata
 from chia_rs import CoinSpend, G1Element, G2Element, ProofOfSpace
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
@@ -131,37 +131,37 @@ class ErrorResponse(TypedDict):
 
 
 ENDPOINTS = [
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="get_login",
         request_type="GET",
         request=GetRequest,
         response=GetLoginReponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="get_farmer",
         request_type="GET",
         request=GetRequest,
         response=GetFarmerResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="post_farmer",
         request_type="POST",
         request=FarmerRequest,
         response=PostFarmerResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="put_farmer",
         request_type="PUT",
         request=FarmerRequest,
         response=PutFarmerResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="get_pool_info",
         request_type="GET",
         request=None,
         response=GetPoolInfoResponse,
     ),
-    APIEndpoint(
+    APIEndpointMetadata(
         endpoint_name="post_partial",
         request_type="POST",
         request=PostPartialRequest,

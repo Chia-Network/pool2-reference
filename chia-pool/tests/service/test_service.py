@@ -21,7 +21,6 @@ from chia.pools.pool_wallet_info import NewPoolWalletInitialTargetState, PoolSin
 from chia.types.blockchain_format.program import Program
 from chia.wallet.plotnft_wallet.plotnft_wallet import PlotNFT2Wallet
 from chia.wallet.wallet_request_types import CreateNewWallet, CreateNewWalletType, WalletCreationMode
-from chia_rs import G1Element
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
 from node.config import CONFIG_FILE_NAME as NODE_CONFIG_FILE
@@ -185,17 +184,12 @@ async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, Prop
     farmer_2_payout_instructions = env.wallet_state_manager.encode_puzzle_hash(farmer_2_user_puzhash)
     farmer_1_difficulty = uint64(100)
     farmer_2_difficulty = uint64(200)
-    farmer_1_authentication_pubkey = env.xch_wallet.convert_public_key_to_synthetic(
-        G1Element.from_bytes(await env.wallet_state_manager.get_public_key(farmer_1_user_puzhash))
-    )
-    farmer_2_authentication_pubkey = env.xch_wallet.convert_public_key_to_synthetic(
-        G1Element.from_bytes(await env.wallet_state_manager.get_public_key(farmer_2_user_puzhash))
-    )
+    farmer_1_authentication_pubkey = (await farmer_1_wallet.get_current_plotnft()).user_config.synthetic_pubkey
+    farmer_2_authentication_pubkey = (await farmer_2_wallet.get_current_plotnft()).user_config.synthetic_pubkey
 
     await service.store.add_farmer(
         version=uint8(2),
         launcher_id=farmer_1_launcher_id,
-        user_puzzle_hash=farmer_1_user_puzhash,
         payout_instructions=farmer_1_payout_instructions,
         difficulty=farmer_1_difficulty,
         authentication_public_key=farmer_1_authentication_pubkey,
@@ -203,7 +197,6 @@ async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, Prop
     await service.store.add_farmer(
         version=uint8(2),
         launcher_id=farmer_2_launcher_id,
-        user_puzzle_hash=farmer_2_user_puzhash,
         payout_instructions=farmer_2_payout_instructions,
         difficulty=farmer_2_difficulty,
         authentication_public_key=farmer_2_authentication_pubkey,

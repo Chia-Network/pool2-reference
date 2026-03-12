@@ -10,9 +10,10 @@ import aiohttp
 import pytest
 import yaml
 from api.server import APIEndpointMetadata
+from api.service import Service
 from chia.util.streamable import Streamable, streamable
 from chia_rs.sized_bytes import bytes32
-from server.config import CONFIG_FILE_NAME
+from server.config import CONFIG_FILE_NAME, Config
 from server.farmer_rpc import FarmerRPCServer
 from server.pooling_tasks import PoolServer
 
@@ -117,10 +118,14 @@ class V2EndpointResponse(Streamable):
 
 @pytest.mark.anyio
 async def test_rpc_server(config_fixture: None) -> None:
-    async def v1_handler(request: V1EndpointRequest, token_sk: bytes32) -> V1EndpointResponse:  # noqa: RUF029
+    async def v1_handler(  # noqa: RUF029
+        request: V1EndpointRequest, service: Service, config: Config, token_sk: bytes32
+    ) -> V1EndpointResponse:
         return V1EndpointResponse(v1_response=request.v1_argument, token_sk=token_sk)
 
-    async def v2_handler(request: V2EndpointRequest, token_sk: bytes32) -> V2EndpointResponse:  # noqa: RUF029
+    async def v2_handler(  # noqa: RUF029
+        request: V2EndpointRequest, service: Service, config: Config, token_sk: bytes32
+    ) -> V2EndpointResponse:
         return V2EndpointResponse(v2_response=request.v2_argument, token_sk=token_sk)
 
     async with (
@@ -144,6 +149,7 @@ async def test_rpc_server(config_fixture: None) -> None:
                 ],
             },
             handlers={"v1": {"test_endpoint": v1_handler}, "v2": {"test_endpoint": v2_handler}},
+            service=AsyncMock(),
             token_sk=bytes32.zeros,
         ),
         aiohttp.ClientSession() as session,

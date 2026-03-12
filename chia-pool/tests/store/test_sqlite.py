@@ -49,8 +49,6 @@ def thirty_two_bytes(*, id_num: int) -> bytes32:
 async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> None:
     farmer_1_launcher_id = thirty_two_bytes(id_num=1)
     farmer_2_launcher_id = thirty_two_bytes(id_num=2)
-    farmer_1_user_puzhash = thirty_two_bytes(id_num=3)
-    farmer_2_user_puzhash = thirty_two_bytes(id_num=4)
     farmer_1_payout_instructions = "cash money"
     farmer_2_payout_instructions = "for the love of the game"
     farmer_1_difficulty = uint64(100)
@@ -71,7 +69,6 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
         await store.add_farmer(
             version=uint8(1),
             launcher_id=farmer_1_launcher_id,
-            user_puzzle_hash=farmer_1_user_puzhash,
             payout_instructions=farmer_1_payout_instructions,
             difficulty=farmer_1_difficulty,
             authentication_public_key=farmer_1_authentication_pubkey,
@@ -79,7 +76,6 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
         await store.add_farmer(
             version=uint8(1),
             launcher_id=farmer_2_launcher_id,
-            user_puzzle_hash=farmer_2_user_puzhash,
             payout_instructions=farmer_2_payout_instructions,
             difficulty=farmer_2_difficulty,
             authentication_public_key=farmer_2_authentication_pubkey,
@@ -87,7 +83,6 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
         for _ in range(2):
             assert await store.get_farmer(launcher_id=farmer_1_launcher_id) == GetFarmerResponse(
                 version=uint8(1),
-                user_puzzle_hash=farmer_1_user_puzhash,
                 payout_instructions=farmer_1_payout_instructions,
                 difficulty=farmer_1_difficulty,
                 authentication_public_key=farmer_1_authentication_pubkey,
