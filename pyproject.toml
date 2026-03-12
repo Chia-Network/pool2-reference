@@ -10,7 +10,7 @@ license = "Apache-2.0"
 readme = {file = "README.md", content-type = "text/markdown"}
 keywords= ["chia", "blockchain", "node", "pooling"]
 homepage = "https://chia.net/"
-dependencies = ["aiosqlite (>=0.22.1,<0.23.0)", "aiohttp (>=3.13.3,<4.0.0)", "pytest-xdist (>=3.8.0,<4.0.0)"]
+dependencies = ["aiosqlite (>=0.22.1,<0.23.0)", "aiohttp (>=3.13.3,<4.0.0)", "pytest-xdist (>=3.8.0,<4.0.0)", "chia-rs (==0.38.2)"]
 version = "0.0.1-dev23"
 
 [tool.poetry]
