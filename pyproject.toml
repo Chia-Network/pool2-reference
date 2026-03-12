@@ -18,7 +18,7 @@ version = "0.0.1-dev23"
 packages = [{ include = "chia-pool"}]
 
 [[tool.poetry.source]]
-name = "chia"
+name = "chia-pool"
 url = "https://pypi.chia.net/simple/"
 priority = "supplemental"
 

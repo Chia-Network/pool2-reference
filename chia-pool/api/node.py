@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Protocol, Self
+from typing import Protocol
 
 from chia_rs import CoinRecord, CoinSpend
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32
-from typing_extensions import TypedDict
+from typing_extensions import Self, TypedDict
 
 
 # Responses

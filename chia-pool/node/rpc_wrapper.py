@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Self
 
 import yaml
 from api.node import (
@@ -18,6 +17,7 @@ from chia.rpc.rpc_client import ResponseFailureError
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16, uint32
 from node.config import CONFIG_FILE_NAME, Config, load
+from typing_extensions import Self
 
 
 class NodeRPC:

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Protocol, Self
+from typing import Protocol
 
 from api.node import FullNode
 from api.store import Store
 from api.wallet import Wallet
 from chia_rs.sized_ints import uint64
 from service.config import ServiceConfig
+from typing_extensions import Self
 
 
 class Service(Protocol):

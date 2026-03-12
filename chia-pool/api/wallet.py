@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Protocol, Self
+from typing import Protocol
 
 from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
-from typing_extensions import TypedDict
+from typing_extensions import Self, TypedDict
 
 
 # API

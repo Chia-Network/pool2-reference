@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Self
 
 import aiosqlite
 import yaml
@@ -21,6 +20,7 @@ from chia_rs import G1Element
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
 from store.config import CONFIG_FILE_NAME, Config, load
+from typing_extensions import Self
 
 
 class Store:

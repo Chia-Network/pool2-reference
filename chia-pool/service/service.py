@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 from dataclasses import replace
 from pathlib import Path
-from typing import Self
 
 import yaml
 from api.node import FullNode
@@ -16,6 +15,7 @@ from chia_rs import G2Element, SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32, uint64
 from service.config import CONFIG_FILE_NAME, ServiceConfig, load
+from typing_extensions import Self
 
 
 async def confirm_partial(partial: PartialMetadata) -> bool:  # noqa: RUF029

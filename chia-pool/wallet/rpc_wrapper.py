@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Self
 
 import yaml
 from api.wallet import GetTransactionStatusResponse, Payment, SendTransactionResponse, SubmitTransactionResponse
@@ -24,6 +23,7 @@ from chia.wallet.wallet_spend_bundle import WalletSpendBundle
 from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16, uint32, uint64
+from typing_extensions import Self
 from wallet.config import CONFIG_FILE_NAME, Config, load
 
 
