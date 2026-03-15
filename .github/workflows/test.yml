@@ -128,6 +128,19 @@ jobs:
         run: |
           mv chia-pool/ notchia-pool/
 
+      - name: Cache test blocks and plots
+        if: matrix.configuration.checkout_blocks_and_plots
+        uses: actions/cache@v5
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MIN: 1
+        id: test-blocks-plots
+        with:
+          path: |
+            ${{ github.workspace }}/.chia/blocks
+            ${{ github.workspace }}/.chia/test-plots
+            ${{ github.workspace }}/.chia/test-bundles
+          key: ${{ env.BLOCKS_AND_PLOTS_VERSION }}
+
       - name: Test code with pytest
         run: |
           pytest .
