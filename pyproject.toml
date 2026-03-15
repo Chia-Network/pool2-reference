@@ -10,7 +10,6 @@ license = "Apache-2.0"
 readme = {file = "README.md", content-type = "text/markdown"}
 keywords= ["chia", "blockchain", "node", "pooling"]
 homepage = "https://chia.net/"
-dependencies = ["aiosqlite (>=0.22.1,<0.23.0)", "aiohttp (>=3.13.3,<4.0.0)", "pytest-xdist (>=3.8.0,<4.0.0)", "chia-rs (==0.38.2)"]
 version = "0.0.1-dev23"
 
 [tool.poetry]
@@ -26,7 +25,11 @@ priority = "supplemental"
 source = "https://github.com/Chia-Network/chia-pool/"
 
 [tool.poetry.dependencies]
-chia = { git = "https://github.com/Chia-Network/chia-blockchain.git", rev = "c5b62add91e05d264077cc0768d3ea935b07bb11" }
+chia-blockchain = { git = "https://github.com/Chia-Network/chia-blockchain.git", rev = "c5b62add91e05d264077cc0768d3ea935b07bb11" }
+pytest-xdist = { version = ">=3.8.0,<4.0.0" }
+aiohttp = { version = ">=3.13.3,<4.0.0" }
+aiosqlite = { version = ">=0.22.1,<0.23.0" }
+chia-rs = { version = "0.38.2" }
 pyjwt = { version = ">=2.10.1,<3.0.0" }
 marshmallow = { version = ">=4.2.1,<5.0.0" }
 click = { version = ">=8.3.1,<9.0.0", optional = true }
@@ -36,7 +39,7 @@ pytest = { version = ">=8.3.3", optional = true }
 ruff = { version = ">=0.8.1", optional = true }
 
 [project.optional-dependencies]
-dev = ["mypy", "pre-commit", "pytest", "ruff", "click"]
+dev = ["mypy", "pre-commit", "pytest", "ruff", "click", "pytest-xdist"]
 
 [tool.poetry-dynamic-versioning]
 enable = false
