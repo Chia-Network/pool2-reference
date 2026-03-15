@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import pathlib
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -13,13 +14,43 @@ from api.server import APIEndpointMetadata
 from api.service import Service
 from chia.util.streamable import Streamable, streamable
 from chia_rs.sized_bytes import bytes32
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 from server.config import CONFIG_FILE_NAME, Config
 from server.farmer_rpc import FarmerRPCServer
 from server.pooling_tasks import PoolServer
 
 
+def _generate_ssl_cert(tmp_path: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "localhost")])
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.now(datetime.timezone.utc))
+        .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1))
+        .add_extension(x509.SubjectAlternativeName([x509.DNSName("localhost")]), critical=False)
+        .sign(key, hashes.SHA256())
+    )
+    cert_path = tmp_path / "test.crt"
+    key_path = tmp_path / "test.key"
+    cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(
+        key.private_bytes(
+            serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()
+        )
+    )
+    return cert_path, key_path
+
+
 @pytest.fixture
 def config_fixture(tmp_path: pathlib.Path) -> Iterator[None]:
+    ssl_cert_path, ssl_key_path = _generate_ssl_cert(tmp_path)
     config_path = pathlib.Path.home().joinpath(CONFIG_FILE_NAME)
     try:
         config_path.touch()
@@ -47,11 +78,8 @@ def config_fixture(tmp_path: pathlib.Path) -> Iterator[None]:
                     "web_config": {
                         "host": "localhost",
                         "port": 8080,
-                        # TODO: don't rely on chia config here
-                        "ssl_cert_path": str(
-                            pathlib.Path.home().joinpath(".chia/mainnet/config/ssl/ca/private_ca.crt")
-                        ),
-                        "ssl_key_path": str(pathlib.Path.home().joinpath(".chia/mainnet/config/ssl/ca/private_ca.key")),
+                        "ssl_cert_path": str(ssl_cert_path),
+                        "ssl_key_path": str(ssl_key_path),
                     },
                     "service_loop_intervals": 1,
                     "authentication_token_timeout": 0,
