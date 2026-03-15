@@ -135,9 +135,9 @@ jobs:
         id: test-blocks-plots
         with:
           path: |
-            ${{ github.workspace }}/.chia/blocks
-            ${{ github.workspace }}/.chia/test-plots
-            ${{ github.workspace }}/.chia/test-bundles
+            ${GITHUB_WORKSPACE}/.chia/blocks
+            ${GITHUB_WORKSPACE}/.chia/test-plots
+            ${GITHUB_WORKSPACE}/.chia/test-bundles
           key: ${{ env.BLOCKS_AND_PLOTS_VERSION }}
 
       - name: Checkout test blocks and plots
@@ -148,6 +148,8 @@ jobs:
           gh release download -R Chia-Network/test-cache ${{ env.BLOCKS_AND_PLOTS_VERSION }} --archive=tar.gz -O - | tar xzf -
           mkdir "${GITHUB_WORKSPACE}/.chia"
           mv "${GITHUB_WORKSPACE}/test-cache-${{ env.BLOCKS_AND_PLOTS_VERSION }}/"* "${GITHUB_WORKSPACE}/.chia"
+          echo "${GITHUB_WORKSPACE}"
+          ls "${GITHUB_WORKSPACE}/.chia"
 
       - name: Test code with pytest
         run: |
