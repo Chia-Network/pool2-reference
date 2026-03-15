@@ -148,7 +148,7 @@ jobs:
         run: |
           gh release download -R Chia-Network/test-cache ${{ env.BLOCKS_AND_PLOTS_VERSION }} --archive=tar.gz -O - | tar xzf -
           mkdir "${GITHUB_WORKSPACE}/.chia"
-          mv "${GITHUB_WORKSPACE}/test-cache-${{ env.BLOCKS_AND_PLOTS_VERSION }}/"* "${GITHUB_WORKSPACE}/.chia"
+          mv "${GITHUB_WORKSPACE}/test-cache-${{ env.BLOCKS_AND_PLOTS_VERSION }}/*" "${GITHUB_WORKSPACE}/.chia"
 
       - name: Test code with pytest
         run: |
