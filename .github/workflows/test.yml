@@ -52,7 +52,7 @@ jobs:
 
     env:
       JOB_FILE_NAME: tests_${{ matrix.os.name }}_python-${{ matrix.python.version }}
-      BLOCKS_AND_PLOTS_VERSION: 0.44.0
+      BLOCKS_AND_PLOTS_VERSION: 0.45.6
 
     steps:
       - name: Configure git
