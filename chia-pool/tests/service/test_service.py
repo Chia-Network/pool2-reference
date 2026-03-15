@@ -83,6 +83,7 @@ async def environments(
             tx_config=wallet_environments.tx_config, push=True
         ) as action_scope:
             puzzle_hash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
+        await wallet_environments.full_node.wait_for_wallet_synced(wallet_node=env.node)
         with service_config_path.open(mode="w") as file:
             TODO = 0
             yaml.dump(
