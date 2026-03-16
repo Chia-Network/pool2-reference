@@ -153,4 +153,4 @@ jobs:
 
       - name: Test code with pytest
         run: |
-          pytest . -n 4
+          pytest .
