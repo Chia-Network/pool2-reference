@@ -36,10 +36,10 @@ jobs:
             runs-on: ubuntu-24.04-arm
             platform: "ubuntu"
           - name: "MacOS Intel"
-            runs-on: ${{ github.repository_owner == 'Chia-Network' && 'macos-13-intel' || 'macos-15-intel' }}
+            runs-on: "macos-15-intel"
             platform: "macos"
           - name: "MacOS M1"
-            runs-on: ${{ github.repository_owner == 'Chia-Network' && 'macos-13-arm64' || 'macos-15' }}
+            runs-on: "macos-15"
             platform: "macos"
           - name: "Windows"
             runs-on: windows-latest
