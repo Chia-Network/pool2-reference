@@ -117,7 +117,7 @@ async def environments(
                 yield wallet_environments, service, current_time
     finally:
         if store_config_path.exists():
-            wallet_config_path.unlink()
+            store_config_path.unlink()
         if node_config_path.exists():
             node_config_path.unlink()
         if service_config_path.exists():
