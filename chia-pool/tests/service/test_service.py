@@ -83,7 +83,6 @@ async def environments(
             tx_config=wallet_environments.tx_config, push=True
         ) as action_scope:
             puzzle_hash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
-        await wallet_environments.full_node.wait_for_wallet_synced(wallet_node=env.node)
         with service_config_path.open(mode="w") as file:
             TODO = 0
             yaml.dump(
@@ -114,6 +113,7 @@ async def environments(
             with patch.object(Service, "current_time", new_callable=PropertyMock) as current_time:
                 service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc)
                 current_time.return_value = uint64(service.config["partial_confirmation_delay"])
+                await wallet_environments.full_node.wait_for_wallet_synced(wallet_node=env.node)
                 yield wallet_environments, service, current_time
     finally:
         if store_config_path.exists():
@@ -158,6 +158,7 @@ async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, Prop
             ),
             tx_config=wallet_envs.tx_config,
         )
+        await wallet_envs.full_node.wait_for_wallet_synced(wallet_node=env.node)
     await wallet_envs.process_pending_states(
         [
             WalletStateTransition(),
