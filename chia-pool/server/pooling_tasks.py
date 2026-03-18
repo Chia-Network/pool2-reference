@@ -18,6 +18,7 @@ def _create_loop(
     async def looped_func() -> None:
         while True:
             try:
+                logger.info("Triggering task %s", func.__qualname__)
                 await func()
             except Exception:
                 logger.exception("Error in %s", func.__qualname__)
@@ -65,6 +66,7 @@ class PoolServer:
         try:
             yield None
         finally:
+            self.logger.debug("Cancelling tasks")
             self.partial_task.cancel()
             self.collection_task.cancel()
             self.payment_task.cancel()
