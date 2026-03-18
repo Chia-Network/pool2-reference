@@ -44,10 +44,18 @@ def start(auth_sk: str) -> None:
 @cli.command()
 @click.option("--store-path", type=click.Path(exists=False), required=True, help="The path to the store database file")
 @click.option(
-    "--hostname",
+    "--full-node-hostname",
     type=str,
     required=True,
-    help="The hostname to use for the service",
+    help="The hostname where the full node is running",
+    show_default=True,
+    default="127.0.0.1",
+)
+@click.option(
+    "--wallet-hostname",
+    type=str,
+    required=True,
+    help="The hostname where the wallet is running",
     show_default=True,
     default="127.0.0.1",
 )
@@ -322,7 +330,7 @@ def start(auth_sk: str) -> None:
     required=True,
     help="The host for the web server",
     show_default=True,
-    default="localhost",
+    default="127.0.0.1",
 )
 @click.option(
     "--web-port",
@@ -363,7 +371,8 @@ def start(auth_sk: str) -> None:
 def generate_config(
     *,
     store_path: str,
-    hostname: str,
+    full_node_hostname: str,
+    wallet_hostname: str,
     full_node_rpc_port: int,
     wallet_rpc_port: int,
     chia_root: str,
@@ -432,7 +441,7 @@ def generate_config(
     with node_config_path.open(mode="w") as file:
         yaml.dump(
             {
-                "self_hostname": hostname,
+                "self_hostname": full_node_hostname,
                 "rpc_port": full_node_rpc_port,
                 "root_path": chia_root,
                 "net_config": {
@@ -452,7 +461,7 @@ def generate_config(
     with wallet_config_path.open(mode="w") as file:
         yaml.dump(
             {
-                "self_hostname": hostname,
+                "self_hostname": wallet_hostname,
                 "rpc_port": wallet_rpc_port,
                 "root_path": chia_root,
                 "net_config": {
