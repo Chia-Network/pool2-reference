@@ -97,6 +97,11 @@ async def test_server(config_fixture: None) -> None:
     service_mock = AsyncMock()
     call_count = 0
 
+    service_mock.confirm_partials.__qualname__ = "confirm_partials"
+    service_mock.collect_pool_rewards.__qualname__ = "collect_pool_rewards"
+    service_mock.submit_payments.__qualname__ = "submit_payments"
+    service_mock.check_for_singletons.__qualname__ = "check_for_singletons"
+
     NUMBER_OF_LOOPS = 3
     NUMBER_OF_SERVICE_ENDPOINTS = 4
 
