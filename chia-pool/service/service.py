@@ -52,6 +52,9 @@ class Service:
         return self
 
     async def confirm_partials(self) -> None:
+        """
+        The purpose of this task is to confirm partials that have been submitted by farmers after appropriate burial
+        """
         launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
         target_timestamp = uint64(self.current_time - self.config["partial_confirmation_delay"])
         for launcher_id in launcher_id_response["launcher_ids"]:
@@ -67,6 +70,9 @@ class Service:
             await self.store.confirm_partials(launcher_id=launcher_id, until_timestamp=target_timestamp)
 
     async def check_for_singletons(self) -> None:
+        """
+        The purpose of this task is to follow farmer singletons to monitor for any exits initiated or completed.
+        """
         # TODO: v1
         launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
         for launcher_id in launcher_id_response["launcher_ids"]:
@@ -107,6 +113,9 @@ class Service:
             )
 
     async def collect_pool_rewards(self) -> None:
+        """
+        The purpose of this task is to forward to the pool any pool rewards that farmers have successfully farmed.
+        """
         # TODO: v1
         launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
         launcher_id_to_reward_hash: dict[bytes32, bytes32] = {}
@@ -168,6 +177,10 @@ class Service:
         )
 
     async def submit_payments(self) -> None:
+        """
+        The purpose of this task is to payout farmers from a pool's wallet to credit them for the work proportional
+        to the amount of total work done for the pool over the interval since the last payout.
+        """
         timestamp = self.current_time
         user_difficulty_points: dict[bytes32, int] = {}
         user_payout_instructions: dict[bytes32, str] = {}

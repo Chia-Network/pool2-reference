@@ -25,6 +25,13 @@ from server.config import Config
 
 
 async def get_login(request: GetLoginRequest, service: Service, config: Config, token_sk: bytes32) -> GetLoginResponse:
+    """
+    This endpoint can be called by an existing farmer to obtain an authentication token to be used with many of the
+    other endpoints.
+
+    In order to prove that the farmer is who they claim to be, the farmer must sign a message with the key that controls
+    exiting from the pool.
+    """
     farmer_record = await service.store.get_farmer(launcher_id=request.launcher_id)
     if farmer_record is None:
         raise FarmerRPCError(
@@ -59,6 +66,11 @@ async def get_login(request: GetLoginRequest, service: Service, config: Config, 
 async def get_farmer(
     request: GetFarmerRequest, service: Service, config: Config, token_sk: bytes32
 ) -> GetFarmerResponse:
+    """
+    This endpoint requires an authentication token.
+
+    Returns all of the relevant information about a given farmer that the pool has.
+    """
     if not verify_token(
         token_sk=token_sk.hex(),
         token=request.authentication_token,
@@ -87,6 +99,12 @@ async def get_farmer(
 async def post_farmer(
     request: FarmerRequest, service: Service, config: Config, token_sk: bytes32
 ) -> PostFarmerResponse:
+    """
+    This endpoint may be called by anybody to add a new farmer to the pool.
+
+    The farmer must prove that they exist and that they control the pooling singleton by signing a message with the key
+    that controls exiting from the pool.
+    """
     if (
         request.payload.authentication_public_key is None
         or request.payload.payout_instructions is None
@@ -108,6 +126,11 @@ async def post_farmer(
 
 
 async def put_farmer(request: FarmerRequest, service: Service, config: Config, token_sk: bytes32) -> PutFarmerResponse:
+    """
+    This endpoint requires an authentication token.
+
+    The purpose of this endpoint is to update any farmer information after the farmer has already been posted.
+    """
     if request.authentication_token is None:
         raise FarmerRPCError(
             code=PoolErrorCode.INVALID_AUTHENTICATION_TOKEN, message="Authentication token required for PUT /farmer"
@@ -149,6 +172,9 @@ async def get_pool_info(  # noqa: RUF029
     config: Config,
     token_sk: bytes32,
 ) -> GetPoolInfoResponse:
+    """
+    The endpoint requires no authentication and can basically be used as the index.html for information about the pool.
+    """
     # TODO: rate limiting, etc.
     return GetPoolInfoResponse(
         protocol_version=uint8(2),
@@ -177,6 +203,12 @@ def adjust_difficulty(*, current_difficulty: uint64, partial_difficulty: uint64)
 async def post_partial(
     request: PostPartialRequest, service: Service, config: Config, token_sk: bytes32
 ) -> PostPartialResponse:
+    """
+    This endpoint requires an authentication token.
+
+    The purpose of this endpoint is to submit a partial to the pool which the pool will confirm and in turn credit
+    the farmer so they receive payouts proportional to the work they are doing for the pool.
+    """
     if not verify_token(
         token_sk=token_sk.hex(),
         token=request.authentication_token,

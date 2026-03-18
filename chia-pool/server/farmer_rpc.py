@@ -95,7 +95,7 @@ class FarmerRPCServer:
                     path=f"/{version_string}/{route.endpoint_name}",
                     handler=handler,
                 )
-                if version_string == "v1":
+                if version_string == "v1":  # for backwards compatibility, we put v1 endpoints on / as well
                     app.router.add_route(
                         method=route.request_type,
                         path=f"/{route.endpoint_name}",
