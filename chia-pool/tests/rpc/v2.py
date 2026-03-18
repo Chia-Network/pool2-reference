@@ -276,6 +276,7 @@ async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, Prop
             json=PostPartialRequest(
                 payload=PartialPayload(
                     launcher_id=bytes32.zeros,
+                    authentication_token=login_response.authentication_token,
                     proof_of_space=ProofOfSpace(  # TODO
                         challenge=bytes32.zeros,
                         pool_public_key=None,
@@ -293,7 +294,6 @@ async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, Prop
                     harvester_id=bytes32.zeros,
                 ),
                 aggregate_signature=G2Element(),  # TODO
-                authentication_token=login_response.authentication_token,
             ).to_json_dict(),
             ssl=False,
         ) as resp:

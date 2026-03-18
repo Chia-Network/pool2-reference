@@ -50,13 +50,14 @@ class GetPoolInfoResponse(Streamable):
     description: str
     target_puzzle_hash: bytes32
     authentication_token_timeout: uint8
-    pool_memoization: Program
+    pool_memoization: Program  # addition from v1
 
 
 @streamable
 @dataclass(frozen=True, kw_only=True)
 class PartialPayload(Streamable):
     launcher_id: bytes32
+    authentication_token: str
     proof_of_space: ProofOfSpace
     sp_hash: bytes32
     end_of_sub_slot: bool
@@ -68,7 +69,6 @@ class PartialPayload(Streamable):
 class PostPartialRequest(Streamable):
     payload: PartialPayload
     aggregate_signature: G2Element
-    authentication_token: str
 
 
 @streamable
@@ -90,12 +90,14 @@ class GetFarmerResponse(Streamable):
     authentication_public_key: G1Element
     payout_instructions: str
     current_difficulty: uint64
+    current_points: uint64
 
 
 @streamable
 @dataclass(frozen=True, kw_only=True)
 class FarmerPayload(Streamable):
     launcher_id: bytes32
+    authentication_token: str | None = None
     authentication_public_key: G1Element | None = None
     payout_instructions: str | None = None
     suggested_difficulty: uint64 | None = None
@@ -106,7 +108,6 @@ class FarmerPayload(Streamable):
 class FarmerRequest(Streamable):
     payload: FarmerPayload
     signature: G2Element
-    authentication_token: str | None = None
 
 
 @streamable

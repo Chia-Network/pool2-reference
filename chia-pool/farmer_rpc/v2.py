@@ -80,6 +80,7 @@ async def get_farmer(
         authentication_public_key=farmer_record["authentication_public_key"],
         payout_instructions=farmer_record["payout_instructions"],
         current_difficulty=farmer_record["difficulty"],
+        current_points=uint64(0),  # TODO
     )
 
 
