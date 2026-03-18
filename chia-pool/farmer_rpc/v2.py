@@ -131,13 +131,13 @@ async def put_farmer(request: FarmerRequest, service: Service, config: Config, t
 
     The purpose of this endpoint is to update any farmer information after the farmer has already been posted.
     """
-    if request.authentication_token is None:
+    if request.payload.authentication_token is None:
         raise FarmerRPCError(
             code=PoolErrorCode.INVALID_AUTHENTICATION_TOKEN, message="Authentication token required for PUT /farmer"
         )
     if not verify_token(
         token_sk=token_sk.hex(),
-        token=request.authentication_token,
+        token=request.payload.authentication_token,
         plotnft_id=request.payload.launcher_id,
         current_time=datetime.datetime.fromtimestamp(service.current_time, tz=datetime.timezone.utc),
     ):
@@ -211,7 +211,7 @@ async def post_partial(
     """
     if not verify_token(
         token_sk=token_sk.hex(),
-        token=request.authentication_token,
+        token=request.payload.authentication_token,
         plotnft_id=request.payload.launcher_id,
         current_time=datetime.datetime.fromtimestamp(service.current_time, tz=datetime.timezone.utc),
     ):
