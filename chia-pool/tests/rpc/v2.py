@@ -251,9 +251,9 @@ async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, Prop
                     launcher_id=bytes32.zeros,
                     payout_instructions=wallet_address2,
                     suggested_difficulty=uint64(10),
+                    authentication_token=login_response.authentication_token,
                 ),
                 signature=G2Element(),  # TODO
-                authentication_token=login_response.authentication_token,
             ).to_json_dict(),
             ssl=False,
         ) as resp:
@@ -270,6 +270,7 @@ async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, Prop
                 authentication_public_key=SK.get_g1(),
                 payout_instructions=wallet_address2,
                 current_difficulty=uint64(10),
+                current_points=uint64(0),
             )
         async with session.post(
             "https://localhost:8080/v2/post_partial",
