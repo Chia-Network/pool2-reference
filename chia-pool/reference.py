@@ -235,7 +235,7 @@ def start(auth_sk: str) -> None:
     required=True,
     help="Whether to log to syslog",
     show_default=True,
-    default=True,
+    default=False,
 )
 @click.option(
     "--log-syslog-host",

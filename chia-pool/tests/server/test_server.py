@@ -61,7 +61,7 @@ def config_fixture(tmp_path: pathlib.Path) -> Iterator[None]:
                     "logging": {
                         "log_level": "DEBUG",
                         "log_stdout": True,
-                        "log_syslog": True,
+                        "log_syslog": False,
                         "log_syslog_host": "",
                         "log_syslog_port": TODO,
                         "log_filename": "",
