@@ -208,18 +208,19 @@ class Service:
         # TODO: persist and check tx_ids
         # TODO: persist claims pending payouts
         # TODO: batch
-        await self.wallet.send_transaction(
-            payments=[
-                Payment(
-                    puzzle_hash=(puzzle_hash := convert_payout_instructions(user_payout_instructions[user])),
-                    amount=uint64(amount),
-                    memos=[puzzle_hash.hex()],
-                )
-                for user, amount in payouts.items()
-            ],
-            fee=uint64(0),
-        )
-        await self.store.add_payout(
-            timestamp=timestamp,
-            payout_details="",  # TODO: delete this?
-        )
+        if len(payouts) > 0:
+            await self.wallet.send_transaction(
+                payments=[
+                    Payment(
+                        puzzle_hash=(puzzle_hash := convert_payout_instructions(user_payout_instructions[user])),
+                        amount=uint64(amount),
+                        memos=[puzzle_hash.hex()],
+                    )
+                    for user, amount in payouts.items()
+                ],
+                fee=uint64(0),
+            )
+            await self.store.add_payout(
+                timestamp=timestamp,
+                payout_details="",  # TODO: delete this?
+            )
