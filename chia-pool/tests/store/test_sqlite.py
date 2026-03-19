@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def config_fixture(tmp_path: pathlib.Path) -> Iterator[None]:
-    config_path = pathlib.Path.home().joinpath(CONFIG_FILE_NAME)
+    config_path = pathlib.Path.cwd().joinpath(CONFIG_FILE_NAME)
     try:
         config_path.touch()
         with config_path.open(mode="w") as file:

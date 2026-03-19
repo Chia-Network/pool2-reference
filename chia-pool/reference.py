@@ -421,11 +421,11 @@ def generate_config(
     authentication_token_timeout: int,
 ) -> None:
     """Generate all configuration files."""
-    server_config_path = pathlib.Path.home().joinpath(SERVER_CONFIG_FILE)
-    service_config_path = pathlib.Path.home().joinpath(SERVICE_CONFIG_FILE)
-    node_config_path = pathlib.Path.home().joinpath(NODE_CONFIG_FILE)
-    wallet_config_path = pathlib.Path.home().joinpath(WALLET_CONFIG_FILE)
-    store_config_path = pathlib.Path.home().joinpath(STORE_CONFIG_FILE)
+    server_config_path = pathlib.Path.cwd().joinpath(SERVER_CONFIG_FILE)
+    service_config_path = pathlib.Path.cwd().joinpath(SERVICE_CONFIG_FILE)
+    node_config_path = pathlib.Path.cwd().joinpath(NODE_CONFIG_FILE)
+    wallet_config_path = pathlib.Path.cwd().joinpath(WALLET_CONFIG_FILE)
+    store_config_path = pathlib.Path.cwd().joinpath(STORE_CONFIG_FILE)
     if not store_config_path.exists():
         store_config_path.touch()
     if not service_config_path.exists():

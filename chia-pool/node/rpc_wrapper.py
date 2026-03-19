@@ -28,7 +28,7 @@ class NodeRPC:
     @asynccontextmanager
     async def create(cls) -> AsyncIterator[Self]:
         self = cls()
-        with Path.home().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
+        with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
             config_data = yaml.safe_load(file)
         config: Config = load(config_data)
         self.config = config

@@ -53,7 +53,7 @@ jobs:
     env:
       CHIA_ROOT: ${{ github.workspace }}/.chia/mainnet
       JOB_FILE_NAME: tests_${{ matrix.os.name }}_python-${{ matrix.python.version }}
-      BLOCKS_AND_PLOTS_VERSION: 0.45.6
+      BLOCKS_AND_PLOTS_VERSION: 0.45.7
 
     steps:
       - name: Configure git
@@ -153,4 +153,4 @@ jobs:
 
       - name: Test code with pytest
         run: |
-          pytest .
+          pytest . -n 4

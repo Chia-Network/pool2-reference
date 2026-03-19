@@ -41,7 +41,7 @@ class Service:
     @classmethod
     def create(cls, *, store: Store, full_node: FullNode, wallet: Wallet) -> Self:
         self = cls()
-        with Path.home().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
+        with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
             config_data = yaml.safe_load(file)
         config: ServiceConfig = load(config_data)
         self.config = config

@@ -38,6 +38,7 @@ from chia_rs import G2Element, PrivateKey, ProofOfSpace
 from chia_rs.chia_rs import AugSchemeMPL
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint64
+from click.testing import CliRunner
 from farmer_rpc.v2 import HANDLERS, METADATA
 from node.config import CONFIG_FILE_NAME as NODE_CONFIG_FILE
 from node.rpc_wrapper import NodeRPC
@@ -47,6 +48,7 @@ from service.config import CONFIG_FILE_NAME as SERVICE_CONFIG_FILE
 from service.service import Service
 from store.config import CONFIG_FILE_NAME as STORE_CONFIG_FILE
 from store.sqlite import Store as SqliteStore
+from tests.server.test_server import _generate_ssl_cert  # noqa: PLC2701
 from wallet.config import CONFIG_FILE_NAME as WALLET_CONFIG_FILE
 from wallet.rpc_wrapper import WalletRPC
 
@@ -58,135 +60,136 @@ async def environments(
     tmp_path: pathlib.Path,
 ) -> AsyncIterator[tuple[WalletTestFramework, ServiceAPI, PropertyMock]]:
     env = wallet_environments.environments[0]
-    server_config_path = pathlib.Path.home().joinpath(SERVER_CONFIG_FILE)
-    service_config_path = pathlib.Path.home().joinpath(SERVICE_CONFIG_FILE)
-    node_config_path = pathlib.Path.home().joinpath(NODE_CONFIG_FILE)
-    wallet_config_path = pathlib.Path.home().joinpath(WALLET_CONFIG_FILE)
-    store_config_path = pathlib.Path.home().joinpath(STORE_CONFIG_FILE)
-    try:
-        store_config_path.touch()
-        service_config_path.touch()
-        node_config_path.touch()
-        wallet_config_path.touch()
-        server_config_path.touch()
-        with server_config_path.open(mode="w") as file:
-            TODO = 0
-            yaml.dump(
-                {
-                    "logging": {
-                        "log_level": "DEBUG",
-                        "log_stdout": True,
-                        "log_syslog": True,
-                        "log_syslog_host": "",
-                        "log_syslog_port": TODO,
-                        "log_filename": "",
-                        "log_maxfilesrotation": TODO,
-                        "log_max_bytes_rotation": TODO,
-                        "log_use_gzip": True,
+    ssl_cert_path, ssl_key_path = _generate_ssl_cert(tmp_path)
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        server_config_path = pathlib.Path.cwd().joinpath(SERVER_CONFIG_FILE)
+        service_config_path = pathlib.Path.cwd().joinpath(SERVICE_CONFIG_FILE)
+        node_config_path = pathlib.Path.cwd().joinpath(NODE_CONFIG_FILE)
+        wallet_config_path = pathlib.Path.cwd().joinpath(WALLET_CONFIG_FILE)
+        store_config_path = pathlib.Path.cwd().joinpath(STORE_CONFIG_FILE)
+        try:
+            store_config_path.touch()
+            service_config_path.touch()
+            node_config_path.touch()
+            wallet_config_path.touch()
+            server_config_path.touch()
+            with server_config_path.open(mode="w") as file:
+                TODO = 0
+                yaml.dump(
+                    {
+                        "logging": {
+                            "log_level": "DEBUG",
+                            "log_stdout": True,
+                            "log_syslog": False,
+                            "log_syslog_host": "",
+                            "log_syslog_port": TODO,
+                            "log_filename": "",
+                            "log_maxfilesrotation": TODO,
+                            "log_max_bytes_rotation": TODO,
+                            "log_use_gzip": True,
+                        },
+                        "pool_info": {
+                            "name": "",
+                            "logo_url": "https://foo.com",
+                            "description": "",
+                            "welcome_message": "",
+                            "minimum_difficulty": TODO,
+                        },
+                        "web_config": {
+                            "host": "localhost",
+                            "port": 8080,
+                            # TODO: don't rely on chia config here
+                            "ssl_cert_path": str(ssl_cert_path),
+                            "ssl_key_path": str(ssl_key_path),
+                        },
+                        "service_loop_intervals": 1,
+                        "authentication_token_timeout": 0,
                     },
-                    "pool_info": {
-                        "name": "",
-                        "logo_url": "https://foo.com",
-                        "description": "",
-                        "welcome_message": "",
-                        "minimum_difficulty": TODO,
+                    file,
+                )
+            with store_config_path.open(mode="w") as file:
+                yaml.dump({"store_path": str(tmp_path.joinpath("store.sqlite"))}, file)
+            with node_config_path.open(mode="w") as file:
+                yaml.dump(
+                    {
+                        "self_hostname": self_hostname,
+                        "rpc_port": wallet_environments.full_node_rpc_client.port,
+                        "root_path": str(env.node.root_path),
+                        "net_config": {
+                            "rpc_timeout": env.service.config["rpc_timeout"],
+                            "daemon_ssl": env.service.config["daemon_ssl"],
+                            "private_ssl_ca": env.service.config["private_ssl_ca"],
+                        },
                     },
-                    "web_config": {
-                        "host": "localhost",
-                        "port": 8080,
-                        # TODO: don't rely on chia config here
-                        "ssl_cert_path": str(
-                            pathlib.Path.home().joinpath(".chia/mainnet/config/ssl/ca/private_ca.crt")
-                        ),
-                        "ssl_key_path": str(pathlib.Path.home().joinpath(".chia/mainnet/config/ssl/ca/private_ca.key")),
+                    file,
+                )
+            with wallet_config_path.open(mode="w") as file:
+                yaml.dump(
+                    {
+                        "self_hostname": self_hostname,
+                        "rpc_port": env.rpc_server.listen_port,
+                        "root_path": str(env.node.root_path),
+                        "net_config": {
+                            "rpc_timeout": env.service.config["rpc_timeout"],
+                            "daemon_ssl": env.service.config["daemon_ssl"],
+                            "private_ssl_ca": env.service.config["private_ssl_ca"],
+                        },
                     },
-                    "service_loop_intervals": 1,
-                    "authentication_token_timeout": 0,
-                },
-                file,
-            )
-        with store_config_path.open(mode="w") as file:
-            yaml.dump({"store_path": str(tmp_path.joinpath("store.sqlite"))}, file)
-        with node_config_path.open(mode="w") as file:
-            yaml.dump(
-                {
-                    "self_hostname": self_hostname,
-                    "rpc_port": wallet_environments.full_node_rpc_client.port,
-                    "root_path": str(env.node.root_path),
-                    "net_config": {
-                        "rpc_timeout": env.service.config["rpc_timeout"],
-                        "daemon_ssl": env.service.config["daemon_ssl"],
-                        "private_ssl_ca": env.service.config["private_ssl_ca"],
+                    file,
+                )
+            async with env.wallet_state_manager.new_action_scope(
+                tx_config=wallet_environments.tx_config, push=True
+            ) as action_scope:
+                puzzle_hash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
+            with service_config_path.open(mode="w") as file:
+                TODO = 0
+                yaml.dump(
+                    {
+                        "pool_identity": {
+                            "relative_lock_height": 5,
+                            "pool_claim_hash": puzzle_hash.hex(),
+                            "pool_memoization": "80",
+                        },
+                        "min_difficulty": 0,
+                        "default_difficulty": TODO,
+                        "partial_time_limit": TODO,
+                        "partial_confirmation_delay": 600,  # 10 minutes
+                        "scan_start_height": TODO,
+                        "collect_pool_rewards_interval": TODO,
+                        "confirmation_security_threshold": TODO,
+                        "payment_interval": TODO,
+                        "max_additions_per_transaction": TODO,
+                        "number_of_partials_target": TODO,
+                        "time_target": TODO,
+                        "fee_basis_points": 1000,  # 10%
+                        "genesis_challenge": env.node.constants.GENESIS_CHALLENGE.hex(),
                     },
-                },
-                file,
-            )
-        with wallet_config_path.open(mode="w") as file:
-            yaml.dump(
-                {
-                    "self_hostname": self_hostname,
-                    "rpc_port": env.rpc_server.listen_port,
-                    "root_path": str(env.node.root_path),
-                    "net_config": {
-                        "rpc_timeout": env.service.config["rpc_timeout"],
-                        "daemon_ssl": env.service.config["daemon_ssl"],
-                        "private_ssl_ca": env.service.config["private_ssl_ca"],
-                    },
-                },
-                file,
-            )
-        async with env.wallet_state_manager.new_action_scope(
-            tx_config=wallet_environments.tx_config, push=True
-        ) as action_scope:
-            puzzle_hash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
-        with service_config_path.open(mode="w") as file:
-            TODO = 0
-            yaml.dump(
-                {
-                    "pool_identity": {
-                        "relative_lock_height": 5,
-                        "pool_claim_hash": puzzle_hash.hex(),
-                        "pool_memoization": "80",
-                    },
-                    "min_difficulty": 0,
-                    "default_difficulty": TODO,
-                    "partial_time_limit": TODO,
-                    "partial_confirmation_delay": 600,  # 10 minutes
-                    "scan_start_height": TODO,
-                    "collect_pool_rewards_interval": TODO,
-                    "confirmation_security_threshold": TODO,
-                    "payment_interval": TODO,
-                    "max_additions_per_transaction": TODO,
-                    "number_of_partials_target": TODO,
-                    "time_target": TODO,
-                    "fee_basis_points": 1000,  # 10%
-                    "genesis_challenge": env.node.constants.GENESIS_CHALLENGE.hex(),
-                },
-                file,
-            )
-        async with NodeRPC.create() as node_rpc, WalletRPC.create() as wallet_rpc, SqliteStore.create() as store:
-            # mock in a timestamp
-            with patch.object(Service, "current_time", new_callable=PropertyMock) as current_time:
-                service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc)
-                current_time.return_value = uint64(service.config["partial_confirmation_delay"] + 3600)
-                async with FarmerRPCServer.create_rpc(
-                    farmer_rpcs={"v2": METADATA},
-                    handlers={"v2": HANDLERS},
-                    service=service,
-                    token_sk=bytes32.zeros,
-                ):
-                    yield wallet_environments, service, current_time
-    finally:
-        if store_config_path.exists():
-            wallet_config_path.unlink()
-        if node_config_path.exists():
-            node_config_path.unlink()
-        if service_config_path.exists():
-            service_config_path.unlink()
-        if wallet_config_path.exists():
-            wallet_config_path.unlink()
-        if server_config_path.exists():
-            server_config_path.unlink()
+                    file,
+                )
+            async with NodeRPC.create() as node_rpc, WalletRPC.create() as wallet_rpc, SqliteStore.create() as store:
+                # mock in a timestamp
+                with patch.object(Service, "current_time", new_callable=PropertyMock) as current_time:
+                    service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc)
+                    current_time.return_value = uint64(service.config["partial_confirmation_delay"] + 3600)
+                    async with FarmerRPCServer.create_rpc(
+                        farmer_rpcs={"v2": METADATA},
+                        handlers={"v2": HANDLERS},
+                        service=service,
+                        token_sk=bytes32.zeros,
+                    ):
+                        yield wallet_environments, service, current_time
+        finally:
+            if store_config_path.exists():
+                wallet_config_path.unlink()
+            if node_config_path.exists():
+                node_config_path.unlink()
+            if service_config_path.exists():
+                service_config_path.unlink()
+            if wallet_config_path.exists():
+                wallet_config_path.unlink()
+            if server_config_path.exists():
+                server_config_path.unlink()
 
 
 SK = PrivateKey.from_seed(
@@ -205,7 +208,7 @@ wallet_address2 = "xch1ne8gwkm975x3sm48j99gr686g0v9nsdj9j9suxu929za756k272q34kfd
     indirect=True,
 )
 @pytest.mark.anyio
-async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, PropertyMock]) -> None:
+async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, PropertyMock]) -> None:
     _, service, current_time = environments
     async with aiohttp.ClientSession() as session:
         async with session.get(

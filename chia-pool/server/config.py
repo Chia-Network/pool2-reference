@@ -92,6 +92,6 @@ def load(data: Config) -> Config:
 
 
 def canonical_load_config() -> Config:
-    with Path.home().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
+    with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
         config_data = yaml.safe_load(file)
     return Config(config_data)

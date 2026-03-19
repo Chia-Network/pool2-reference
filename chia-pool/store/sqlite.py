@@ -31,39 +31,37 @@ class Store:
     @contextlib.asynccontextmanager
     async def create(cls) -> AsyncIterator[Self]:
         store = cls()
-        with Path.home().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
+        with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
             config_data = yaml.safe_load(file)
         config: Config = load(config_data)
         store.config = config
-        async with (
-            DBWrapper2.managed(database=Path(config["store_path"])) as store.db_wrapper,
-            store.db_wrapper.writer_maybe_transaction() as conn,
-        ):
-            await conn.execute(
-                "CREATE TABLE IF NOT EXISTS farmers("
-                "launcher_id blob PRIMARY KEY, "
-                "version int, "
-                "payout_instructions string, "
-                "difficulty bigint, "
-                "authentication_public_key blob)"
-            )
-            await conn.execute(
-                "CREATE TABLE IF NOT EXISTS singletons"
-                "(launcher_id blob PRIMARY KEY, coin_id blob, created_height int, exiting_height int)"
-            )
-            await conn.execute(
-                "CREATE TABLE IF NOT EXISTS partials("
-                "launcher_id blob, "
-                "timestamp bigint PRIMARY KEY, "
-                "difficulty bigint, "
-                "confirmed boolean)"
-            )
-            await conn.execute(
-                "CREATE TABLE IF NOT EXISTS claims(timestamp bigint PRIMARY KEY, amount bigint, confirmed boolean)"
-            )
-            await conn.execute(
-                "CREATE TABLE IF NOT EXISTS payouts(timestamp bigint PRIMARY KEY, payout_details string)"
-            )
+        async with DBWrapper2.managed(database=Path(config["store_path"])) as store.db_wrapper:
+            async with store.db_wrapper.writer_maybe_transaction() as conn:
+                await conn.execute(
+                    "CREATE TABLE IF NOT EXISTS farmers("
+                    "launcher_id blob PRIMARY KEY, "
+                    "version int, "
+                    "payout_instructions string, "
+                    "difficulty bigint, "
+                    "authentication_public_key blob)"
+                )
+                await conn.execute(
+                    "CREATE TABLE IF NOT EXISTS singletons"
+                    "(launcher_id blob PRIMARY KEY, coin_id blob, created_height int, exiting_height int)"
+                )
+                await conn.execute(
+                    "CREATE TABLE IF NOT EXISTS partials("
+                    "launcher_id blob, "
+                    "timestamp bigint PRIMARY KEY, "
+                    "difficulty bigint, "
+                    "confirmed boolean)"
+                )
+                await conn.execute(
+                    "CREATE TABLE IF NOT EXISTS claims(timestamp bigint PRIMARY KEY, amount bigint, confirmed boolean)"
+                )
+                await conn.execute(
+                    "CREATE TABLE IF NOT EXISTS payouts(timestamp bigint PRIMARY KEY, payout_details string)"
+                )
 
             yield store
 

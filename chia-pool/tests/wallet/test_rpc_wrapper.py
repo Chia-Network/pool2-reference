@@ -34,7 +34,7 @@ def environments(
     wallet_environments: WalletTestFramework,  # noqa: F811
 ) -> Iterator[WalletTestFramework]:
     env = wallet_environments.environments[0]
-    config_path = pathlib.Path.home().joinpath(CONFIG_FILE_NAME)
+    config_path = pathlib.Path.cwd().joinpath(CONFIG_FILE_NAME)
     try:
         config_path.touch()
         with config_path.open(mode="w") as file:

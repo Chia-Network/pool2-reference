@@ -51,7 +51,7 @@ def _generate_ssl_cert(tmp_path: pathlib.Path) -> tuple[pathlib.Path, pathlib.Pa
 @pytest.fixture
 def config_fixture(tmp_path: pathlib.Path) -> Iterator[None]:
     ssl_cert_path, ssl_key_path = _generate_ssl_cert(tmp_path)
-    config_path = pathlib.Path.home().joinpath(CONFIG_FILE_NAME)
+    config_path = pathlib.Path.cwd().joinpath(CONFIG_FILE_NAME)
     try:
         config_path.touch()
         with config_path.open(mode="w") as file:

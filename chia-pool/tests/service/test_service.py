@@ -23,6 +23,7 @@ from chia.wallet.plotnft_wallet.plotnft_wallet import PlotNFT2Wallet
 from chia.wallet.wallet_request_types import CreateNewWallet, CreateNewWalletType, WalletCreationMode
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
+from click.testing import CliRunner
 from node.config import CONFIG_FILE_NAME as NODE_CONFIG_FILE
 from node.rpc_wrapper import NodeRPC
 from service.config import CONFIG_FILE_NAME as SERVICE_CONFIG_FILE
@@ -39,91 +40,93 @@ async def environments(
     wallet_environments: WalletTestFramework,  # noqa: F811
     tmp_path: pathlib.Path,
 ) -> AsyncIterator[tuple[WalletTestFramework, ServiceAPI, PropertyMock]]:
-    env = wallet_environments.environments[0]
-    service_config_path = pathlib.Path.home().joinpath(SERVICE_CONFIG_FILE)
-    node_config_path = pathlib.Path.home().joinpath(NODE_CONFIG_FILE)
-    wallet_config_path = pathlib.Path.home().joinpath(WALLET_CONFIG_FILE)
-    store_config_path = pathlib.Path.home().joinpath(STORE_CONFIG_FILE)
-    try:
-        store_config_path.touch()
-        service_config_path.touch()
-        node_config_path.touch()
-        wallet_config_path.touch()
-        with store_config_path.open(mode="w") as file:
-            yaml.dump({"store_path": str(tmp_path.joinpath("store.sqlite"))}, file)
-        with node_config_path.open(mode="w") as file:
-            yaml.dump(
-                {
-                    "self_hostname": self_hostname,
-                    "rpc_port": wallet_environments.full_node_rpc_client.port,
-                    "root_path": str(env.node.root_path),
-                    "net_config": {
-                        "rpc_timeout": env.service.config["rpc_timeout"],
-                        "daemon_ssl": env.service.config["daemon_ssl"],
-                        "private_ssl_ca": env.service.config["private_ssl_ca"],
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        env = wallet_environments.environments[0]
+        service_config_path = pathlib.Path.cwd().joinpath(SERVICE_CONFIG_FILE)
+        node_config_path = pathlib.Path.cwd().joinpath(NODE_CONFIG_FILE)
+        wallet_config_path = pathlib.Path.cwd().joinpath(WALLET_CONFIG_FILE)
+        store_config_path = pathlib.Path.cwd().joinpath(STORE_CONFIG_FILE)
+        try:
+            store_config_path.touch()
+            service_config_path.touch()
+            node_config_path.touch()
+            wallet_config_path.touch()
+            with store_config_path.open(mode="w") as file:
+                yaml.dump({"store_path": str(tmp_path.joinpath("store.sqlite"))}, file)
+            with node_config_path.open(mode="w") as file:
+                yaml.dump(
+                    {
+                        "self_hostname": self_hostname,
+                        "rpc_port": wallet_environments.full_node_rpc_client.port,
+                        "root_path": str(env.node.root_path),
+                        "net_config": {
+                            "rpc_timeout": env.service.config["rpc_timeout"],
+                            "daemon_ssl": env.service.config["daemon_ssl"],
+                            "private_ssl_ca": env.service.config["private_ssl_ca"],
+                        },
                     },
-                },
-                file,
-            )
-        with wallet_config_path.open(mode="w") as file:
-            yaml.dump(
-                {
-                    "self_hostname": self_hostname,
-                    "rpc_port": env.rpc_server.listen_port,
-                    "root_path": str(env.node.root_path),
-                    "net_config": {
-                        "rpc_timeout": env.service.config["rpc_timeout"],
-                        "daemon_ssl": env.service.config["daemon_ssl"],
-                        "private_ssl_ca": env.service.config["private_ssl_ca"],
+                    file,
+                )
+            with wallet_config_path.open(mode="w") as file:
+                yaml.dump(
+                    {
+                        "self_hostname": self_hostname,
+                        "rpc_port": env.rpc_server.listen_port,
+                        "root_path": str(env.node.root_path),
+                        "net_config": {
+                            "rpc_timeout": env.service.config["rpc_timeout"],
+                            "daemon_ssl": env.service.config["daemon_ssl"],
+                            "private_ssl_ca": env.service.config["private_ssl_ca"],
+                        },
                     },
-                },
-                file,
-            )
-        async with env.wallet_state_manager.new_action_scope(
-            tx_config=wallet_environments.tx_config, push=True
-        ) as action_scope:
-            puzzle_hash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
-        with service_config_path.open(mode="w") as file:
-            TODO = 0
-            yaml.dump(
-                {
-                    "pool_identity": {
-                        "relative_lock_height": 5,
-                        "pool_claim_hash": puzzle_hash.hex(),
-                        "pool_memoization": "80",
+                    file,
+                )
+            async with env.wallet_state_manager.new_action_scope(
+                tx_config=wallet_environments.tx_config, push=True
+            ) as action_scope:
+                puzzle_hash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
+            with service_config_path.open(mode="w") as file:
+                TODO = 0
+                yaml.dump(
+                    {
+                        "pool_identity": {
+                            "relative_lock_height": 5,
+                            "pool_claim_hash": puzzle_hash.hex(),
+                            "pool_memoization": "80",
+                        },
+                        "min_difficulty": 0,
+                        "default_difficulty": TODO,
+                        "partial_time_limit": TODO,
+                        "partial_confirmation_delay": 600,  # 10 minutes
+                        "scan_start_height": TODO,
+                        "collect_pool_rewards_interval": TODO,
+                        "confirmation_security_threshold": TODO,
+                        "payment_interval": TODO,
+                        "max_additions_per_transaction": TODO,
+                        "number_of_partials_target": TODO,
+                        "time_target": TODO,
+                        "fee_basis_points": 1000,  # 10%
+                        "genesis_challenge": env.node.constants.GENESIS_CHALLENGE.hex(),
                     },
-                    "min_difficulty": 0,
-                    "default_difficulty": TODO,
-                    "partial_time_limit": TODO,
-                    "partial_confirmation_delay": 600,  # 10 minutes
-                    "scan_start_height": TODO,
-                    "collect_pool_rewards_interval": TODO,
-                    "confirmation_security_threshold": TODO,
-                    "payment_interval": TODO,
-                    "max_additions_per_transaction": TODO,
-                    "number_of_partials_target": TODO,
-                    "time_target": TODO,
-                    "fee_basis_points": 1000,  # 10%
-                    "genesis_challenge": env.node.constants.GENESIS_CHALLENGE.hex(),
-                },
-                file,
-            )
-        async with NodeRPC.create() as node_rpc, WalletRPC.create() as wallet_rpc, SqliteStore.create() as store:
-            # mock in a timestamp
-            with patch.object(Service, "current_time", new_callable=PropertyMock) as current_time:
-                service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc)
-                current_time.return_value = uint64(service.config["partial_confirmation_delay"])
-                await wallet_environments.full_node.wait_for_wallet_synced(wallet_node=env.node)
-                yield wallet_environments, service, current_time
-    finally:
-        if store_config_path.exists():
-            store_config_path.unlink()
-        if node_config_path.exists():
-            node_config_path.unlink()
-        if service_config_path.exists():
-            service_config_path.unlink()
-        if wallet_config_path.exists():
-            wallet_config_path.unlink()
+                    file,
+                )
+            async with NodeRPC.create() as node_rpc, WalletRPC.create() as wallet_rpc, SqliteStore.create() as store:
+                # mock in a timestamp
+                with patch.object(Service, "current_time", new_callable=PropertyMock) as current_time:
+                    service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc)
+                    current_time.return_value = uint64(service.config["partial_confirmation_delay"])
+                    await wallet_environments.full_node.wait_for_wallet_synced(wallet_node=env.node)
+                    yield wallet_environments, service, current_time
+        finally:
+            if store_config_path.exists():
+                store_config_path.unlink()
+            if node_config_path.exists():
+                node_config_path.unlink()
+            if service_config_path.exists():
+                service_config_path.unlink()
+            if wallet_config_path.exists():
+                wallet_config_path.unlink()
 
 
 def thirty_two_bytes(*, id_num: int) -> bytes32:
