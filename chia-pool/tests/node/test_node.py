@@ -60,11 +60,13 @@ async def test_rpc_wrapper(full_node_service: SimulatorFullNodeService) -> None:
         NUM_BLOCKS = 3
         REWARDS_PER_BLOCK = 2
         ACS = Program.to(None)
-        await full_node_service._api.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True)  # pre-farm
+        await full_node_service._api.farm_blocks_to_puzzlehash(
+            count=1, guarantee_transaction_blocks=True, timeout=20
+        )  # pre-farm
         await full_node_service._api.farm_blocks_to_puzzlehash(  # our rewards (paid out in next block)
-            count=1, farm_to=ACS.get_tree_hash(), guarantee_transaction_blocks=True
+            count=1, farm_to=ACS.get_tree_hash(), guarantee_transaction_blocks=True, timeout=20
         )
-        await full_node_service._api.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True)
+        await full_node_service._api.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True, timeout=20)
         await full_node_service._api.wait_for_self_synced()
         # check the blockchain state
         state = await rpc_client.get_blockchain_state()
@@ -90,7 +92,7 @@ async def test_rpc_wrapper(full_node_service: SimulatorFullNodeService) -> None:
                 aggregated_signature=G2Element(),
             )
         )
-        await full_node_service._api.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True)
+        await full_node_service._api.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True, timeout=20)
         await full_node_service._api.wait_for_self_synced()
         spent_height = (await rpc_client.get_blockchain_state())["peak"]
         # check include_spent_coins working
