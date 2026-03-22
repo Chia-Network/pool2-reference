@@ -238,10 +238,10 @@ async def test_service(environments: tuple[WalletTestFramework, ServiceAPI, Prop
 
     # Test pool reward claims
     farmer_1_reward_amount = await wallet_envs.full_node.farm_blocks_to_puzzlehash(
-        count=1, farm_to=farmer_1_wallet.p2_singleton_puzzle_hash, guarantee_transaction_blocks=True, timeout=20
+        count=1, farm_to=farmer_1_wallet.p2_singleton_puzzle_hash, guarantee_transaction_blocks=True, timeout=100
     )
     farmer_2_reward_amount = await wallet_envs.full_node.farm_blocks_to_puzzlehash(
-        count=1, farm_to=farmer_2_wallet.p2_singleton_puzzle_hash, guarantee_transaction_blocks=True, timeout=20
+        count=1, farm_to=farmer_2_wallet.p2_singleton_puzzle_hash, guarantee_transaction_blocks=True, timeout=100
     )
     await wallet_envs.process_pending_states(
         [

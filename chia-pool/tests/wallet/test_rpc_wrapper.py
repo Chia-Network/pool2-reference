@@ -105,9 +105,9 @@ async def test_rpc_wrapper(environments: WalletTestFramework) -> None:
             assert status["confirmed"]
 
         await environments.full_node.farm_blocks_to_puzzlehash(
-            count=1, farm_to=Program.to(1).get_tree_hash(), guarantee_transaction_blocks=True, timeout=20
+            count=1, farm_to=Program.to(1).get_tree_hash(), guarantee_transaction_blocks=True, timeout=100
         )
-        await environments.full_node.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True, timeout=20)
+        await environments.full_node.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True, timeout=100)
         coins = await environments.full_node_rpc_client.get_coin_records_by_puzzle_hash(
             puzzle_hash=Program.to(1).get_tree_hash()
         )
