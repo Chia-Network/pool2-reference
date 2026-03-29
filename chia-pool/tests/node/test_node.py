@@ -54,6 +54,7 @@ def full_node_service(
 
 
 @pytest.mark.anyio
+@pytest.mark.standard_block_tools
 async def test_rpc_wrapper(full_node_service: SimulatorFullNodeService) -> None:
     async with NodeRPC.create() as rpc_client:
         # create ourselves some coins
