@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 import pytest
 import yaml
 from api.wallet import Payment, Wallet
-from chia._tests.conftest import (
-    blockchain_constants,  # noqa: PLC2701, F401
-    consensus_mode,  # noqa: PLC2701, F401
-    self_hostname,  # noqa: PLC2701, F401
-    trusted_full_node,  # noqa: PLC2701, F401
-    tx_config,  # noqa: PLC2701, F401
+from chia._tests.conftest import (  # noqa: PLC2701
+    blockchain_constants,  # noqa: F401
+    consensus_mode,  # noqa: F401
+    self_hostname,  # noqa: F401
+    trusted_full_node,  # noqa: F401
+    tx_config,  # noqa: F401
 )
 from chia._tests.environments.wallet import WalletStateTransition, WalletTestFramework  # noqa: PLC2701
 from chia._tests.wallet.conftest import wallet_environments  # noqa: PLC2701, F401
