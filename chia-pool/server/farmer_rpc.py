@@ -8,12 +8,13 @@ from types import NoneType
 from typing import Any, get_type_hints
 
 from aiohttp import web
-from api.farmer_protocols.rest import APIEndpointMetadata, ErrorResponse, FarmerRPCError, PoolErrorCode
 from api.server import VersionString
 from api.service import Service
+from chia.protocols.pool_protocol import ErrorResponse, PoolErrorCode
 from chia.util.streamable import Streamable
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16
+from farmer_rpc.api import APIEndpointMetadata, FarmerRPCError
 from server.config import Config, canonical_load_config
 from server.logging import setup_logging
 

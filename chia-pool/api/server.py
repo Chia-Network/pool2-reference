@@ -4,10 +4,10 @@ from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import asynccontextmanager
 from typing import Any, Protocol
 
-from api.farmer_protocols.rest import APIEndpointMetadata
 from api.service import Service
 from chia.util.streamable import Streamable
 from chia_rs.sized_bytes import bytes32
+from farmer_rpc.api import APIEndpointMetadata
 
 VersionString = str
 

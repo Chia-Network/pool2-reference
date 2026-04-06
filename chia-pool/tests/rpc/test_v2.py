@@ -7,21 +7,6 @@ from unittest.mock import PropertyMock, patch
 import aiohttp
 import pytest
 import yaml
-from api.farmer_protocols.rest import ErrorResponse, PoolErrorCode
-from api.farmer_protocols.v2.farmer import (
-    FarmerPayload,
-    FarmerRequest,
-    GetFarmerRequest,
-    GetFarmerResponse,
-    GetLoginRequest,
-    GetLoginResponse,
-    GetPoolInfoResponse,
-    PartialPayload,
-    PostFarmerResponse,
-    PostPartialRequest,
-    PostPartialResponse,
-    PutFarmerResponse,
-)
 from api.service import Service as ServiceAPI
 from chia._tests.conftest import (
     blockchain_constants,  # noqa: PLC2701, F401
@@ -33,6 +18,7 @@ from chia._tests.conftest import (
 )
 from chia._tests.environments.wallet import WalletTestFramework
 from chia._tests.wallet.conftest import wallet_environments  # noqa: PLC2701, F401
+from chia.protocols import pool_protocol
 from chia.util.keychain import mnemonic_to_seed
 from chia_rs import G2Element, PrivateKey, ProofOfSpace
 from chia_rs.chia_rs import AugSchemeMPL
@@ -216,26 +202,34 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
             json={},
             ssl=False,
         ) as resp:
-            GetPoolInfoResponse.from_json_dict(await resp.json())  # checking that this is a success response
+            pool_protocol.GetPoolInfoResponse.from_json_dict(
+                await resp.json()
+            )  # checking that this is a success response
         async with session.post(
             "https://localhost:8080/v2/post_farmer",
-            json=FarmerRequest(
-                payload=FarmerPayload(
+            json=pool_protocol.PostFarmerRequest(
+                payload=pool_protocol.PostFarmerPayload(
                     launcher_id=bytes32.zeros,
+                    authentication_token=uint64(0),
                     authentication_public_key=SK.get_g1(),
                     payout_instructions=wallet_address,
                     suggested_difficulty=uint64(0),
+                    authentication_token_v2="",
                 ),
                 signature=G2Element(),  # TODO
             ).to_json_dict(),
             ssl=False,
         ) as resp:
-            PostFarmerResponse.from_json_dict(await resp.json())  # checking that this is a success response
+            pool_protocol.PostFarmerResponse.from_json_dict(
+                await resp.json()
+            )  # checking that this is a success response
         async with session.get(
-            "https://localhost:8080/v2/get_login",
-            json=GetLoginRequest(
-                launcher_id=bytes32.zeros,
-                timestamp=current_time.return_value,
+            "https://localhost:8080/v2/get_auth",
+            json=pool_protocol.GetAuthRequest(
+                pool_protocol.AuthenticationPayloadV2(
+                    launcher_id=bytes32.zeros,
+                    timestamp=current_time.return_value,
+                ),
                 signature=AugSchemeMPL.sign(
                     SK,
                     bytes(uint64(current_time.return_value))
@@ -245,31 +239,34 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
             ).to_json_dict(),
             ssl=False,
         ) as resp:
-            login_response = GetLoginResponse.from_json_dict(await resp.json())
-            assert login_response.recent_partials == []
+            login_response = pool_protocol.GetAuthResponse.from_json_dict(await resp.json())
         async with session.put(
             "https://localhost:8080/v2/put_farmer",
-            json=FarmerRequest(
-                payload=FarmerPayload(
+            json=pool_protocol.PutFarmerRequest(
+                payload=pool_protocol.PutFarmerPayload(
                     launcher_id=bytes32.zeros,
                     payout_instructions=wallet_address2,
                     suggested_difficulty=uint64(10),
-                    authentication_token=login_response.authentication_token,
+                    authentication_token=uint64(0),
+                    authentication_public_key=SK.get_g1(),
+                    authentication_token_v2=login_response.authentication_token,
                 ),
                 signature=G2Element(),  # TODO
             ).to_json_dict(),
             ssl=False,
         ) as resp:
-            PutFarmerResponse.from_json_dict(await resp.json())
+            pool_protocol.PutFarmerResponse.from_json_dict(await resp.json())
         async with session.get(
             "https://localhost:8080/v2/get_farmer",
-            json=GetFarmerRequest(
-                launcher_id=bytes32.zeros, authentication_token=login_response.authentication_token
+            json=pool_protocol.GetFarmerRequest(
+                launcher_id=bytes32.zeros,
+                authentication_token=uint64(0),
+                authentication_token_v2=login_response.authentication_token,
             ).to_json_dict(),
             ssl=False,
         ) as resp:
-            farmer_response = GetFarmerResponse.from_json_dict(await resp.json())
-            assert farmer_response == GetFarmerResponse(
+            farmer_response = pool_protocol.GetFarmerResponse.from_json_dict(await resp.json())
+            assert farmer_response == pool_protocol.GetFarmerResponse(
                 authentication_public_key=SK.get_g1(),
                 payout_instructions=wallet_address2,
                 current_difficulty=uint64(10),
@@ -277,10 +274,10 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
             )
         async with session.post(
             "https://localhost:8080/v2/post_partial",
-            json=PostPartialRequest(
-                payload=PartialPayload(
+            json=pool_protocol.PostPartialRequest(
+                payload=pool_protocol.PostPartialPayload(
                     launcher_id=bytes32.zeros,
-                    authentication_token=login_response.authentication_token,
+                    authentication_token=uint64(0),
                     proof_of_space=ProofOfSpace(  # TODO
                         challenge=bytes32.zeros,
                         pool_public_key=None,
@@ -297,23 +294,26 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
                     end_of_sub_slot=False,
                     harvester_id=bytes32.zeros,
                 ),
+                authentication_token_v2=login_response.authentication_token,
                 aggregate_signature=G2Element(),  # TODO
             ).to_json_dict(),
             ssl=False,
         ) as resp:
-            PostPartialResponse.from_json_dict(await resp.json())
+            pool_protocol.PostPartialResponse.from_json_dict(await resp.json())
 
         # Test authentication token expiration
         current_time.return_value += 1
         async with session.get(
             "https://localhost:8080/v2/get_farmer",
-            json=GetFarmerRequest(
-                launcher_id=bytes32.zeros, authentication_token=login_response.authentication_token
+            json=pool_protocol.GetFarmerRequest(
+                launcher_id=bytes32.zeros,
+                authentication_token=uint64(0),
+                authentication_token_v2=login_response.authentication_token,
             ).to_json_dict(),
             ssl=False,
         ) as resp:
-            error_response = ErrorResponse.from_json_dict(await resp.json())
-            assert error_response == ErrorResponse(
-                error_code=uint16(PoolErrorCode.INVALID_AUTHENTICATION_TOKEN.value),
+            error_response = pool_protocol.ErrorResponse.from_json_dict(await resp.json())
+            assert error_response == pool_protocol.ErrorResponse(
+                error_code=uint16(pool_protocol.PoolErrorCode.INVALID_AUTHENTICATION_TOKEN.value),
                 error_message=f"Invalid authentication token for launcher_id {bytes32.zeros.hex()}.",
             )
