@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+import unittest
 from collections.abc import AsyncIterator
 from unittest.mock import PropertyMock, patch
 
@@ -20,10 +21,10 @@ from chia._tests.environments.wallet import WalletTestFramework
 from chia._tests.wallet.conftest import wallet_environments  # noqa: PLC2701, F401
 from chia.protocols import pool_protocol
 from chia.util.keychain import mnemonic_to_seed
-from chia_rs import G2Element, PrivateKey, ProofOfSpace
+from chia_rs import G2Element, PrivateKey
 from chia_rs.chia_rs import AugSchemeMPL
 from chia_rs.sized_bytes import bytes32
-from chia_rs.sized_ints import uint8, uint16, uint64
+from chia_rs.sized_ints import uint16, uint64
 from click.testing import CliRunner
 from farmer_rpc.v2 import HANDLERS, METADATA
 from node.config import CONFIG_FILE_NAME as NODE_CONFIG_FILE
@@ -90,7 +91,7 @@ async def environments(
                             "ssl_key_path": str(ssl_key_path),
                         },
                         "service_loop_intervals": 1,
-                        "authentication_token_timeout": 0,
+                        "authentication_token_timeout": 1,
                     },
                     file,
                 )
@@ -146,8 +147,8 @@ async def environments(
                         "confirmation_security_threshold": TODO,
                         "payment_interval": TODO,
                         "max_additions_per_transaction": TODO,
-                        "number_of_partials_target": TODO,
-                        "time_target": TODO,
+                        "number_of_partials_target": 2,
+                        "time_target": 2,
                         "fee_basis_points": 1000,  # 10%
                         "genesis_challenge": env.node.constants.GENESIS_CHALLENGE.hex(),
                     },
@@ -186,6 +187,18 @@ SK = PrivateKey.from_seed(
 )
 wallet_address = "xch1skwfr5zdt8l850fzc6984hlr74fcw93mlnzzmkdhr6dmr9vxpk3sl0fvzg"
 wallet_address2 = "xch1ne8gwkm975x3sm48j99gr686g0v9nsdj9j9suxu929za756k272q34kfd6"
+POOL_SK = PrivateKey.from_seed(
+    seed=mnemonic_to_seed(
+        "cluster deal notable hello grace strong grace army skirt magnet million tool outer "
+        "parade shed pony riot sign evoke awake spatial quote shoot bacon"
+    )
+)
+PLOT_SK = PrivateKey.from_seed(
+    seed=mnemonic_to_seed(
+        "cluster deal notable hello grace strong grace army skirt magnet million tool outer "
+        "parade shed pony riot sign evoke awake spatial quote bacon bacon"
+    )
+)
 
 
 @pytest.mark.parametrize(
@@ -193,9 +206,10 @@ wallet_address2 = "xch1ne8gwkm975x3sm48j99gr686g0v9nsdj9j9suxu929za756k272q34kfd
     [{"num_environments": 1, "blocks_needed": [1]}],
     indirect=True,
 )
+@pytest.mark.standard_block_tools
 @pytest.mark.anyio
 async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, PropertyMock]) -> None:
-    _, service, current_time = environments
+    test_framework, service, current_time = environments
     async with aiohttp.ClientSession() as session:
         async with session.get(
             "https://localhost:8080/v2/get_pool_info",
@@ -272,37 +286,39 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
                 current_difficulty=uint64(10),
                 current_points=uint64(0),
             )
-        async with session.post(
-            "https://localhost:8080/v2/post_partial",
-            json=pool_protocol.PostPartialRequest(
-                payload=pool_protocol.PostPartialPayload(
-                    launcher_id=bytes32.zeros,
-                    authentication_token=uint64(0),
-                    proof_of_space=ProofOfSpace(  # TODO
-                        challenge=bytes32.zeros,
-                        pool_public_key=None,
-                        pool_contract_puzzle_hash=None,
-                        plot_public_key=SK.get_g1(),
-                        version=uint8(0),
-                        plot_index=uint16(0),
-                        meta_group=uint8(0),
-                        strength=uint8(0),
-                        size=uint8(0),
-                        proof=b"",
-                    ),
-                    sp_hash=bytes32.zeros,
-                    end_of_sub_slot=False,
-                    harvester_id=bytes32.zeros,
-                ),
-                authentication_token_v2=login_response.authentication_token,
-                aggregate_signature=G2Element(),  # TODO
-            ).to_json_dict(),
-            ssl=False,
-        ) as resp:
-            pool_protocol.PostPartialResponse.from_json_dict(await resp.json())
+        partial = pool_protocol.PostPartialPayload(
+            launcher_id=bytes32.zeros,
+            authentication_token=uint64(0),
+            proof_of_space=(await test_framework.full_node.get_all_full_blocks())[-1].reward_chain_block.proof_of_space,
+            sp_hash=next(iter(test_framework.full_node.full_node.full_node_store.recent_eos.cache.keys())),
+            end_of_sub_slot=True,
+            harvester_id=bytes32.zeros,
+        )
+        original_difficulty = (await service.store.get_farmer(launcher_id=bytes32.zeros))["difficulty"]
+        with (
+            unittest.mock.patch("farmer_rpc.v2.AugSchemeMPL.aggregate_verify", return_value=True),
+            unittest.mock.patch("farmer_rpc.v2.RewardPuzzle.puzzle_hash", return_value=None),
+            unittest.mock.patch("farmer_rpc.v2.verify_and_get_quality_string", return_value=bytes32.zeros),
+            unittest.mock.patch("farmer_rpc.v2.calculate_iterations_quality", return_value=uint64(10)),
+        ):
+            for _ in range(3):
+                async with session.post(
+                    "https://localhost:8080/v2/post_partial",
+                    json=pool_protocol.PostPartialRequest(
+                        payload=partial,
+                        authentication_token_v2=login_response.authentication_token,
+                        aggregate_signature=G2Element(),
+                    ).to_json_dict(),
+                    ssl=False,
+                ) as resp:
+                    pool_protocol.PostPartialResponse.from_json_dict(await resp.json())
+                await service.store.confirm_partials(launcher_id=bytes32.zeros, until_timestamp=service.current_time)
+                current_time.return_value += 1
+
+        assert (await service.store.get_farmer(launcher_id=bytes32.zeros))["difficulty"] > original_difficulty
 
         # Test authentication token expiration
-        current_time.return_value += 1
+        current_time.return_value += 60
         async with session.get(
             "https://localhost:8080/v2/get_farmer",
             json=pool_protocol.GetFarmerRequest(

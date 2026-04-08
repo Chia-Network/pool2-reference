@@ -15,7 +15,7 @@ from chia.protocols import pool_protocol
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
 from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH
-from chia_rs import AugSchemeMPL, ConsensusConstants, G2Element, Program
+from chia_rs import AugSchemeMPL, G2Element, Program
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
 from farmer_rpc.api import APIEndpointMetadata, FarmerRPCError
@@ -254,9 +254,9 @@ async def check_partial(
     # Note the use of peak_height + 1. We Are evaluating the suitability for the next block
     config = load_config(DEFAULT_ROOT_PATH, "config.yaml")  # TODO: get constants via node or something
     overrides = config["network_overrides"]["constants"][config["selected_network"]]
-    constants: ConsensusConstants = replace_str_to_bytes(DEFAULT_CONSTANTS, **overrides)
+    constants = replace_str_to_bytes(DEFAULT_CONSTANTS, **overrides)
     blockchain_state = await node_rpc_client.get_blockchain_state()
-    quality_string: bytes32 | None = verify_and_get_quality_string(
+    quality_string = verify_and_get_quality_string(
         partial.proof_of_space,
         constants,
         challenge_hash,
@@ -306,7 +306,7 @@ async def adjust_difficulty(
         )
     )["partials"]
     # If we haven't processed any partials yet, maintain the current (default) difficulty
-    if len(recent_partials) == 0:
+    if len(recent_partials) < 2:  # noqa: PLR2004
         return current_difficulty
 
     # If we recently updated difficulty, don't update again
@@ -370,14 +370,22 @@ async def post_partial(
         service_config=service.config,
         store=service.store,
     )
+    new_difficulty = await adjust_difficulty(
+        launcher_id=request.payload.launcher_id,
+        current_difficulty=farmer["difficulty"],
+        current_time=service.current_time,
+        service_config=service.config,
+        store=service.store,
+    )
+    await service.store.add_farmer(
+        version=farmer["version"],
+        launcher_id=request.payload.launcher_id,
+        payout_instructions=farmer["payout_instructions"],
+        difficulty=new_difficulty,
+        authentication_public_key=farmer["authentication_public_key"],
+    )
     return pool_protocol.PostPartialResponse(
-        new_difficulty=await adjust_difficulty(
-            launcher_id=request.payload.launcher_id,
-            current_difficulty=farmer["difficulty"],
-            current_time=service.current_time,
-            service_config=service.config,
-            store=service.store,
-        ),
+        new_difficulty=new_difficulty,
     )
 
 
