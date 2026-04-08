@@ -71,7 +71,7 @@ class NodeRPC:
         return GetRecentSignagePointOrEOSResponse(
             signage_point=dict_response["signage_point"],
             eos=None,
-            time_received=uint64(dict_response["time_recieved"]),
+            time_received=uint64(dict_response["time_received"]),
             exists=True,
             reverted=dict_response["reverted"],
         )
@@ -87,8 +87,8 @@ class NodeRPC:
             )
         return GetRecentSignagePointOrEOSResponse(
             signage_point=None,
-            eos=dict_response["end_of_sub_slot"],
-            time_received=uint64(dict_response["time_recieved"]),
+            eos=dict_response["eos"],
+            time_received=uint64(dict_response["time_received"]),
             exists=True,
             reverted=dict_response["reverted"],
         )
