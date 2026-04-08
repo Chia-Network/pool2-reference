@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
 
-from api.service import Service
+from api.node import FullNode
+from api.service import Service, ServiceConfig
+from api.store import GetFarmerResponse, Store
+from chia.consensus.constants import replace_str_to_bytes
+from chia.consensus.default_constants import DEFAULT_CONSTANTS
+from chia.consensus.pot_iterations import calculate_iterations_quality
 from chia.farmer.authentication import create_token, verify_token
+from chia.pools.plotnft_drivers import RewardPuzzle
 from chia.protocols import pool_protocol
-from chia_rs import AugSchemeMPL, Program
+from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
+from chia.util.config import load_config
+from chia.util.default_root import DEFAULT_ROOT_PATH
+from chia_rs import AugSchemeMPL, ConsensusConstants, G2Element, Program
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
 from farmer_rpc.api import APIEndpointMetadata, FarmerRPCError
@@ -182,14 +192,152 @@ async def get_pool_info(  # noqa: RUF029
     )
 
 
-def check_partial(*, partial: pool_protocol.PostPartialPayload) -> uint64:
-    # TODO: Implement partial check logic
-    return uint64(0)
+async def check_partial(
+    *,
+    partial: pool_protocol.PostPartialPayload,
+    node_rpc_client: FullNode,
+    agg_sig: G2Element,
+    farmer_record: GetFarmerResponse,
+    launcher_id: bytes32,
+    current_time: uint64,
+    service_config: ServiceConfig,
+    store: Store,
+) -> None:
+    message: bytes32 = partial.get_hash()
+    if not AugSchemeMPL.aggregate_verify(
+        [partial.proof_of_space.plot_public_key, farmer_record["authentication_public_key"]],
+        [message, message],
+        agg_sig,
+    ):
+        raise FarmerRPCError(pool_protocol.PoolErrorCode.INVALID_SIGNATURE, "The aggregate signature is invalid")
+
+    if partial.proof_of_space.pool_contract_puzzle_hash != RewardPuzzle(singleton_id=launcher_id).puzzle_hash():
+        raise FarmerRPCError(
+            pool_protocol.PoolErrorCode.INVALID_P2_SINGLETON_PUZZLE_HASH,
+            f"Invalid pool contract puzzle hash {partial.proof_of_space.pool_contract_puzzle_hash}",
+        )
+
+    recent = None
+    for _ in range(2):
+        if partial.end_of_sub_slot:
+            recent = await node_rpc_client.get_recent_end_of_subslot(challenge_hash=partial.sp_hash)
+        else:
+            recent = await node_rpc_client.get_recent_signage_point(signage_point_hash=partial.sp_hash)
+        if recent["exists"]:
+            break
+        await asyncio.sleep(10)  # TODO: configurable
+
+    if recent is None or not recent["exists"] or recent["reverted"]:
+        raise FarmerRPCError(
+            pool_protocol.PoolErrorCode.NOT_FOUND, f"Did not find signage point or EOS {partial.sp_hash}"
+        )
+
+    if current_time - recent["time_received"] > service_config["partial_time_limit"]:
+        raise FarmerRPCError(
+            pool_protocol.PoolErrorCode.TOO_LATE,
+            f"Received partial in {current_time - recent['time_received']}. "
+            f"Make sure your proof of space lookups are fast, and network connectivity is good."
+            f"Response must happen in less than {service_config['partial_time_limit']} seconds. NAS or network"
+            f" farming can be an issue",
+        )
+
+    # Validate the proof
+    if recent["signage_point"] is not None:
+        assert recent["signage_point"].cc_vdf
+        challenge_hash: bytes32 = recent["signage_point"].cc_vdf.challenge
+    elif recent["eos"] is not None:
+        assert recent["eos"].challenge_chain
+        challenge_hash = recent["eos"].challenge_chain.get_hash()
+    else:
+        raise RuntimeWarning("semantically impossible: both signage_point and eos are None")  # pragma: no cover
+
+    # Note the use of peak_height + 1. We Are evaluating the suitability for the next block
+    config = load_config(DEFAULT_ROOT_PATH, "config.yaml")  # TODO: get constants via node or something
+    overrides = config["network_overrides"]["constants"][config["selected_network"]]
+    constants: ConsensusConstants = replace_str_to_bytes(DEFAULT_CONSTANTS, **overrides)
+    blockchain_state = await node_rpc_client.get_blockchain_state()
+    quality_string: bytes32 | None = verify_and_get_quality_string(
+        partial.proof_of_space,
+        constants,
+        challenge_hash,
+        partial.sp_hash,
+        height=uint32(blockchain_state["peak"] + 1),
+        prev_transaction_block_height=uint32(0),  # TODO
+    )
+    if quality_string is None:
+        raise FarmerRPCError(
+            pool_protocol.PoolErrorCode.INVALID_PROOF,
+            f"Invalid proof of space {partial.sp_hash}",
+        )
+
+    required_iters = calculate_iterations_quality(
+        constants,
+        quality_string,
+        partial.proof_of_space.param(),
+        farmer_record["difficulty"],
+        partial.sp_hash,
+    )
+
+    if required_iters >= constants.POOL_SUB_SLOT_ITERS // 64:
+        raise FarmerRPCError(
+            pool_protocol.PoolErrorCode.PROOF_NOT_GOOD_ENOUGH,
+            f"Proof of space has required iters {required_iters}, "
+            f"too high for difficulty {farmer_record['difficulty']}",
+        )
+
+    await store.add_partial(
+        launcher_id=launcher_id,
+        timestamp=current_time,
+        difficulty=required_iters,
+    )
 
 
-def adjust_difficulty(*, current_difficulty: uint64, partial_difficulty: uint64) -> uint64:
-    # TODO: How to do this?
-    return uint64(0)
+async def adjust_difficulty(
+    *,
+    launcher_id: bytes32,
+    service_config: ServiceConfig,
+    current_difficulty: uint64,
+    current_time: uint64,
+    store: Store,
+) -> uint64:
+    recent_partials = (
+        await store.get_partials(
+            launcher_id=launcher_id, confirmed=True, count=uint64(service_config["number_of_partials_target"])
+        )
+    )["partials"]
+    # If we haven't processed any partials yet, maintain the current (default) difficulty
+    if len(recent_partials) == 0:
+        return current_difficulty
+
+    # If we recently updated difficulty, don't update again
+    if any(recent_partial.difficulty != current_difficulty for recent_partial in recent_partials):
+        return current_difficulty
+
+    # Lower the difficulty if we are really slow since our last partial
+    ONE_HOUR = 3600
+    if current_time - recent_partials[0].timestamp > 3 * ONE_HOUR:
+        return uint64(max(service_config["min_difficulty"], current_difficulty // 5))
+
+    if current_time - recent_partials[0].timestamp > ONE_HOUR:
+        return uint64(max(service_config["min_difficulty"], uint64(int(current_difficulty // 1.5))))
+
+    time_taken = (recent_partials[0].timestamp - recent_partials[-1].timestamp) * 1.0
+
+    # If we don't have enough partials at this difficulty and time between last and
+    # 1st partials is below target time, don't update yet
+    if (
+        len(recent_partials) < service_config["number_of_partials_target"]
+        and time_taken < service_config["time_target"]
+    ):
+        return current_difficulty
+
+    # Adjust time_taken if number of partials didn't reach number_of_partials_target
+    if len(recent_partials) < service_config["number_of_partials_target"]:
+        time_taken = time_taken * service_config["number_of_partials_target"] / len(recent_partials)
+
+    # Finally, this is the standard case of normal farming and slow (or no) growth, adjust to the new difficulty
+    new_difficulty = uint64(int(current_difficulty * service_config["time_target"] / time_taken))
+    return uint64(max(service_config["min_difficulty"], new_difficulty))
 
 
 async def post_partial(
@@ -212,15 +360,23 @@ async def post_partial(
             message=f"Invalid authentication token for launcher_id {request.payload.launcher_id.hex()}.",
         )
     farmer = await service.store.get_farmer(launcher_id=request.payload.launcher_id)
-    partial_difficulty = check_partial(partial=request.payload)
-    await service.store.add_partial(
+    await check_partial(
+        partial=request.payload,
+        node_rpc_client=service.full_node,
+        agg_sig=request.aggregate_signature,
+        farmer_record=farmer,
         launcher_id=request.payload.launcher_id,
-        timestamp=service.current_time,
-        difficulty=partial_difficulty,
+        current_time=service.current_time,
+        service_config=service.config,
+        store=service.store,
     )
     return pool_protocol.PostPartialResponse(
-        new_difficulty=adjust_difficulty(
-            current_difficulty=farmer["difficulty"], partial_difficulty=partial_difficulty
+        new_difficulty=await adjust_difficulty(
+            launcher_id=request.payload.launcher_id,
+            current_difficulty=farmer["difficulty"],
+            current_time=service.current_time,
+            service_config=service.config,
+            store=service.store,
         ),
     )
 
