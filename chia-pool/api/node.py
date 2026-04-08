@@ -4,9 +4,10 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Protocol
 
-from chia_rs import CoinRecord, CoinSpend
+from chia.consensus.signage_point import SignagePoint
+from chia_rs import CoinRecord, CoinSpend, EndOfSubSlotBundle
 from chia_rs.sized_bytes import bytes32
-from chia_rs.sized_ints import uint32
+from chia_rs.sized_ints import uint32, uint64
 from typing_extensions import Self, TypedDict
 
 
@@ -25,6 +26,9 @@ class GetCoinRecordByNameResponse(TypedDict):
 
 
 class GetRecentSignagePointOrEOSResponse(TypedDict):
+    signage_point: SignagePoint | None
+    eos: EndOfSubSlotBundle | None
+    time_received: uint64
     exists: bool
     reverted: bool
 

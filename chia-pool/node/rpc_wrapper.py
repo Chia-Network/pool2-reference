@@ -15,7 +15,7 @@ from api.node import (
 from chia.full_node.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.rpc_client import ResponseFailureError
 from chia_rs.sized_bytes import bytes32
-from chia_rs.sized_ints import uint16, uint32
+from chia_rs.sized_ints import uint16, uint32, uint64
 from node.config import CONFIG_FILE_NAME, Config, load
 from typing_extensions import Self
 
@@ -65,8 +65,16 @@ class NodeRPC:
                 sp_hash=signage_point_hash, challenge_hash=None
             )
         except ResponseFailureError:
-            return GetRecentSignagePointOrEOSResponse(exists=False, reverted=False)
-        return GetRecentSignagePointOrEOSResponse(exists=True, reverted=dict_response["reverted"])
+            return GetRecentSignagePointOrEOSResponse(
+                signage_point=None, eos=None, time_received=uint64(0), exists=False, reverted=False
+            )
+        return GetRecentSignagePointOrEOSResponse(
+            signage_point=dict_response["signage_point"],
+            eos=None,
+            time_received=uint64(dict_response["time_recieved"]),
+            exists=True,
+            reverted=dict_response["reverted"],
+        )
 
     async def get_recent_end_of_subslot(self, *, challenge_hash: bytes32) -> GetRecentSignagePointOrEOSResponse:
         try:
@@ -74,8 +82,16 @@ class NodeRPC:
                 sp_hash=None, challenge_hash=challenge_hash
             )
         except ResponseFailureError:
-            return GetRecentSignagePointOrEOSResponse(exists=False, reverted=False)
-        return GetRecentSignagePointOrEOSResponse(exists=True, reverted=dict_response["reverted"])
+            return GetRecentSignagePointOrEOSResponse(
+                signage_point=None, eos=None, time_received=uint64(0), exists=False, reverted=False
+            )
+        return GetRecentSignagePointOrEOSResponse(
+            signage_point=None,
+            eos=dict_response["end_of_sub_slot"],
+            time_received=uint64(dict_response["time_recieved"]),
+            exists=True,
+            reverted=dict_response["reverted"],
+        )
 
     async def get_puzzle_and_solution(self, *, coin_id: bytes32, height: uint32) -> GetPuzzleAndSolutionResponse:
         return GetPuzzleAndSolutionResponse(
