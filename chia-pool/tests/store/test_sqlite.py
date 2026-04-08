@@ -168,6 +168,20 @@ async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> No
                 for i in range(1)
             ]
         )
+        assert await store.get_partials(
+            launcher_id=farmer_1_launcher_id, confirmed=False, count=uint64(2)
+        ) == GetPartialsResponse(
+            partials=[
+                PartialMetadata(
+                    timestamp=uint64(2),
+                    difficulty=uint64(2),
+                ),
+                PartialMetadata(
+                    timestamp=uint64(1),
+                    difficulty=uint64(1),
+                ),
+            ]
+        )
         await store.confirm_partials(launcher_id=farmer_1_launcher_id, until_timestamp=uint64(1))
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True) == GetPartialsResponse(
             partials=[

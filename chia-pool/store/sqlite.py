@@ -170,16 +170,29 @@ class Store:
             )
 
     async def get_partials(
-        self, *, launcher_id: bytes32, confirmed: bool, since: uint64 | None = None, before: uint64 | None = None
+        self,
+        *,
+        launcher_id: bytes32,
+        confirmed: bool,
+        since: uint64 | None = None,
+        before: uint64 | None = None,
+        count: uint64 | None = None,
     ) -> GetPartialsResponse:
+        if count is not None and (since is not None or before is not None):
+            raise ValueError("Cannot specify both count and since/before")
+
         async with self.db_wrapper.reader() as conn:
             cursor = await conn.execute(
                 "SELECT * from partials WHERE launcher_id = ?"  # noqa: S608
                 + (" AND confirmed = TRUE" if confirmed else " AND confirmed = FALSE")
                 + (" AND timestamp >= ?" if since is not None else "")
-                + (" AND timestamp < ?" if before is not None else ""),
+                + (" AND timestamp < ?" if before is not None else "")
+                + (" ORDER BY timestamp DESC LIMIT ?" if count is not None else ""),
                 tuple(
-                    [launcher_id] + ([since] if since is not None else []) + ([before] if before is not None else [])
+                    [launcher_id]
+                    + ([since] if since is not None else [])
+                    + ([before] if before is not None else [])
+                    + ([count] if count is not None else []),
                 ),
             )
             rows = await cursor.fetchall()
