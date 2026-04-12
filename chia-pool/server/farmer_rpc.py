@@ -17,6 +17,7 @@ from chia_rs.sized_ints import uint16
 from farmer_rpc.api import APIEndpointMetadata, FarmerRPCError
 from server.config import Config, canonical_load_config
 from server.logging import setup_logging
+from typing_extensions import Self
 
 
 def _wrap_http_handler(
@@ -79,7 +80,7 @@ class FarmerRPCServer:
         ],
         service: Service,
         token_sk: bytes32,
-    ) -> AsyncIterator[None]:
+    ) -> AsyncIterator[Self]:
         self = cls()
         config = canonical_load_config()
         self.logger = logging.getLogger("farmer_rpc")
@@ -121,7 +122,7 @@ class FarmerRPCServer:
             )
             self.logger.info("Starting TCPSite")
             await self.site.start()
-            yield None
+            yield self
         finally:
             self.logger.debug("Cleaning up AppRunner")
             await self.runner.cleanup()

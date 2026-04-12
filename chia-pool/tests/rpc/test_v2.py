@@ -45,7 +45,7 @@ async def environments(
     self_hostname: str,  # noqa: F811
     wallet_environments: WalletTestFramework,  # noqa: F811
     tmp_path: pathlib.Path,
-) -> AsyncIterator[tuple[WalletTestFramework, ServiceAPI, PropertyMock]]:
+) -> AsyncIterator[tuple[WalletTestFramework, ServiceAPI, PropertyMock, str]]:
     env = wallet_environments.environments[0]
     ssl_cert_path, ssl_key_path = _generate_ssl_cert(tmp_path)
     runner = CliRunner()
@@ -85,8 +85,7 @@ async def environments(
                         },
                         "web_config": {
                             "host": "localhost",
-                            "port": 8080,
-                            # TODO: don't rely on chia config here
+                            "port": 0,
                             "ssl_cert_path": str(ssl_cert_path),
                             "ssl_key_path": str(ssl_key_path),
                         },
@@ -164,8 +163,9 @@ async def environments(
                         handlers={"v2": HANDLERS},
                         service=service,
                         token_sk=bytes32.zeros,
-                    ):
-                        yield wallet_environments, service, current_time
+                    ) as farmer_rpc:
+                        port = farmer_rpc.site._server.sockets[0].getsockname()[1]
+                        yield wallet_environments, service, current_time, f"https://localhost:{port}"
         finally:
             if store_config_path.exists():
                 wallet_config_path.unlink()
@@ -208,11 +208,11 @@ PLOT_SK = PrivateKey.from_seed(
 )
 @pytest.mark.standard_block_tools
 @pytest.mark.anyio
-async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, PropertyMock]) -> None:
-    test_framework, service, current_time = environments
+async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, PropertyMock, str]) -> None:
+    test_framework, service, current_time, base_url = environments
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            "https://localhost:8080/v2/get_pool_info",
+            f"{base_url}/v2/get_pool_info",
             json={},
             ssl=False,
         ) as resp:
@@ -220,7 +220,7 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
                 await resp.json()
             )  # checking that this is a success response
         async with session.post(
-            "https://localhost:8080/v2/post_farmer",
+            f"{base_url}/v2/post_farmer",
             json=pool_protocol.PostFarmerRequest(
                 payload=pool_protocol.PostFarmerPayload(
                     launcher_id=bytes32.zeros,
@@ -238,7 +238,7 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
                 await resp.json()
             )  # checking that this is a success response
         async with session.get(
-            "https://localhost:8080/v2/get_auth",
+            f"{base_url}/v2/get_auth",
             json=pool_protocol.GetAuthRequest(
                 pool_protocol.AuthenticationPayloadV2(
                     launcher_id=bytes32.zeros,
@@ -255,7 +255,7 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
         ) as resp:
             login_response = pool_protocol.GetAuthResponse.from_json_dict(await resp.json())
         async with session.put(
-            "https://localhost:8080/v2/put_farmer",
+            f"{base_url}/v2/put_farmer",
             json=pool_protocol.PutFarmerRequest(
                 payload=pool_protocol.PutFarmerPayload(
                     launcher_id=bytes32.zeros,
@@ -271,7 +271,7 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
         ) as resp:
             pool_protocol.PutFarmerResponse.from_json_dict(await resp.json())
         async with session.get(
-            "https://localhost:8080/v2/get_farmer",
+            f"{base_url}/v2/get_farmer",
             json=pool_protocol.GetFarmerRequest(
                 launcher_id=bytes32.zeros,
                 authentication_token=uint64(0),
@@ -286,12 +286,15 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
                 current_difficulty=uint64(10),
                 current_points=uint64(0),
             )
+        recent_eos_hashes = test_framework.full_node.full_node.full_node_store.recent_eos.cache.keys()
+        recent_sp_hashes = test_framework.full_node.full_node.full_node_store.recent_signage_points.cache.keys()
+        use_eos_hash = len(list(recent_eos_hashes)) != 0
         partial = pool_protocol.PostPartialPayload(
             launcher_id=bytes32.zeros,
             authentication_token=uint64(0),
             proof_of_space=(await test_framework.full_node.get_all_full_blocks())[-1].reward_chain_block.proof_of_space,
-            sp_hash=next(iter(test_framework.full_node.full_node.full_node_store.recent_eos.cache.keys())),
-            end_of_sub_slot=True,
+            sp_hash=next(iter(recent_eos_hashes if use_eos_hash else recent_sp_hashes)),
+            end_of_sub_slot=use_eos_hash,
             harvester_id=bytes32.zeros,
         )
         original_difficulty = (await service.store.get_farmer(launcher_id=bytes32.zeros))["difficulty"]
@@ -303,7 +306,7 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
         ):
             for _ in range(3):
                 async with session.post(
-                    "https://localhost:8080/v2/post_partial",
+                    f"{base_url}/v2/post_partial",
                     json=pool_protocol.PostPartialRequest(
                         payload=partial,
                         authentication_token_v2=login_response.authentication_token,
@@ -320,7 +323,7 @@ async def test_v2_rpc(environments: tuple[WalletTestFramework, ServiceAPI, Prope
         # Test authentication token expiration
         current_time.return_value += 60
         async with session.get(
-            "https://localhost:8080/v2/get_farmer",
+            f"{base_url}/v2/get_farmer",
             json=pool_protocol.GetFarmerRequest(
                 launcher_id=bytes32.zeros,
                 authentication_token=uint64(0),

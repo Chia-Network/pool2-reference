@@ -6,15 +6,12 @@ import datetime
 from api.node import FullNode
 from api.service import Service, ServiceConfig
 from api.store import GetFarmerResponse, Store
-from chia.consensus.constants import replace_str_to_bytes
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.consensus.pot_iterations import calculate_iterations_quality
 from chia.farmer.authentication import create_token, verify_token
 from chia.pools.plotnft_drivers import RewardPuzzle
 from chia.protocols import pool_protocol
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
-from chia.util.config import load_config
-from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia_rs import AugSchemeMPL, G2Element, Program
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
@@ -252,9 +249,7 @@ async def check_partial(
         raise RuntimeWarning("semantically impossible: both signage_point and eos are None")  # pragma: no cover
 
     # Note the use of peak_height + 1. We Are evaluating the suitability for the next block
-    config = load_config(DEFAULT_ROOT_PATH, "config.yaml")  # TODO: get constants via node or something
-    overrides = config["network_overrides"]["constants"][config["selected_network"]]
-    constants = replace_str_to_bytes(DEFAULT_CONSTANTS, **overrides)
+    constants = DEFAULT_CONSTANTS  # TODO: get constants via node or something
     blockchain_state = await node_rpc_client.get_blockchain_state()
     quality_string = verify_and_get_quality_string(
         partial.proof_of_space,
