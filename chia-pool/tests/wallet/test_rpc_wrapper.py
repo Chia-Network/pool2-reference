@@ -21,6 +21,7 @@ from chia.wallet.conditions import CreateCoin
 from chia_rs import G2Element, Program, SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
+from click.testing import CliRunner
 from wallet.config import CONFIG_FILE_NAME
 from wallet.rpc_wrapper import WalletRPC
 
@@ -34,27 +35,29 @@ def environments(
     wallet_environments: WalletTestFramework,  # noqa: F811
 ) -> Iterator[WalletTestFramework]:
     env = wallet_environments.environments[0]
-    config_path = pathlib.Path.cwd().joinpath(CONFIG_FILE_NAME)
-    try:
-        config_path.touch()
-        with config_path.open(mode="w") as file:
-            yaml.dump(
-                {
-                    "self_hostname": self_hostname,
-                    "rpc_port": env.rpc_server.listen_port,
-                    "root_path": str(env.node.root_path),
-                    "net_config": {
-                        "rpc_timeout": env.service.config["rpc_timeout"],
-                        "daemon_ssl": env.service.config["daemon_ssl"],
-                        "private_ssl_ca": env.service.config["private_ssl_ca"],
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        config_path = pathlib.Path.cwd().joinpath(CONFIG_FILE_NAME)
+        try:
+            config_path.touch()
+            with config_path.open(mode="w") as file:
+                yaml.dump(
+                    {
+                        "self_hostname": self_hostname,
+                        "rpc_port": env.rpc_server.listen_port,
+                        "root_path": str(env.node.root_path),
+                        "net_config": {
+                            "rpc_timeout": env.service.config["rpc_timeout"],
+                            "daemon_ssl": env.service.config["daemon_ssl"],
+                            "private_ssl_ca": env.service.config["private_ssl_ca"],
+                        },
                     },
-                },
-                file,
-            )
-        yield wallet_environments
-    finally:
-        if config_path.exists():
-            config_path.unlink()
+                    file,
+                )
+            yield wallet_environments
+        finally:
+            if config_path.exists():
+                config_path.unlink()
 
 
 @pytest.mark.parametrize(
