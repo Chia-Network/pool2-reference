@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import pathlib
-from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import pytest
-import yaml
 from api.store import (
     ClaimMetadata,
     GetFarmerResponse,
@@ -20,24 +17,10 @@ from api.store import (
 from chia_rs import G1Element
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
-from store.config import CONFIG_FILE_NAME
 from store.sqlite import Store as SqliteStore
 
 if TYPE_CHECKING:
     store_type: type[Store] = SqliteStore
-
-
-@pytest.fixture
-def config_fixture(tmp_path: pathlib.Path) -> Iterator[None]:
-    config_path = pathlib.Path.cwd().joinpath(CONFIG_FILE_NAME)
-    try:
-        config_path.touch()
-        with config_path.open(mode="w") as file:
-            yaml.dump({"store_path": str(tmp_path.joinpath("store.sqlite"))}, file)
-        yield
-    finally:
-        if config_path.exists():
-            config_path.unlink()
 
 
 def thirty_two_bytes(*, id_num: int) -> bytes32:
@@ -46,7 +29,7 @@ def thirty_two_bytes(*, id_num: int) -> bytes32:
 
 @pytest.mark.parametrize("store_type", [SqliteStore])
 @pytest.mark.anyio
-async def test_sqlite_store(config_fixture: None, store_type: type[Store]) -> None:
+async def test_sqlite_store(store_config: None, store_type: type[Store]) -> None:
     farmer_1_launcher_id = thirty_two_bytes(id_num=1)
     farmer_2_launcher_id = thirty_two_bytes(id_num=2)
     farmer_1_payout_instructions = "cash money"
