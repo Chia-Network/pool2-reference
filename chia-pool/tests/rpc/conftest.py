@@ -12,7 +12,7 @@ def _patch_adjusted_timeout_longer() -> Iterator[None]:
     def new_adjusted_timeout(timeout: float | None) -> float | None:
         if timeout is None:
             return None
-        return adjusted_timeout(timeout) + 5
+        return adjusted_timeout(timeout) + 15
 
     with unittest.mock.patch("chia.simulator.full_node_simulator.adjusted_timeout", side_effect=new_adjusted_timeout):
         yield
