@@ -5,7 +5,7 @@ import datetime
 
 from api.node import FullNode
 from api.service import Service, ServiceConfig
-from api.store import GetFarmerResponse, Store
+from api.store import GetFarmerResponse, PartialMetadata, Store
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.consensus.pot_iterations import calculate_iterations_quality
 from chia.farmer.authentication import create_token, verify_token
@@ -282,8 +282,15 @@ async def check_partial(
 
     await store.add_partial(
         launcher_id=launcher_id,
-        timestamp=current_time,
-        difficulty=required_iters,
+        partial=PartialMetadata(
+            timestamp=current_time,
+            difficulty=required_iters,
+            challenge_hash=partial.sp_hash,
+            pos_hash=partial.proof_of_space.get_hash(),
+            end_of_sub_slot=partial.end_of_sub_slot,
+            # this was checked above to match the farmer's pool_contract_puzzle_hash
+            pool_contract_puzzle_hash=partial.proof_of_space.pool_contract_puzzle_hash,  # type: ignore[arg-type]
+        ),
     )
 
 

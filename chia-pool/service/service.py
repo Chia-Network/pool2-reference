@@ -18,9 +18,17 @@ from service.config import CONFIG_FILE_NAME, ServiceConfig, load
 from typing_extensions import Self
 
 
-async def confirm_partial(partial: PartialMetadata) -> bool:  # noqa: RUF029
-    # TODO: Implement partial confirmation check logic
-    return True
+async def confirm_partial(
+    *,
+    partial: PartialMetadata,
+    node_rpc: FullNode,
+) -> bool:
+    if partial.end_of_sub_slot:
+        response = await node_rpc.get_recent_end_of_subslot(challenge_hash=partial.challenge_hash)
+    else:
+        response = await node_rpc.get_recent_signage_point(signage_point_hash=partial.challenge_hash)
+
+    return not (response is None or response["reverted"] or not response["exists"])
 
 
 def convert_payout_instructions(payout_instructions: str) -> bytes32:
@@ -48,7 +56,6 @@ class Service:
         self.store = store
         self.full_node = full_node
         self.wallet = wallet
-        self.config = config
         return self
 
     async def confirm_partials(self) -> None:
@@ -64,7 +71,10 @@ class Service:
                 before=target_timestamp,
             )
             for partial in partials_response["partials"]:
-                if not await confirm_partial(partial):
+                if not await confirm_partial(
+                    partial=partial,
+                    node_rpc=self.full_node,
+                ):
                     await self.store.delete_partial(launcher_id=launcher_id, timestamp=partial.timestamp)
 
             await self.store.confirm_partials(launcher_id=launcher_id, until_timestamp=target_timestamp)

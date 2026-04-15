@@ -35,6 +35,10 @@ class GetLatestSingletonResponse(TypedDict):
 class PartialMetadata(Streamable):
     timestamp: uint64
     difficulty: uint64
+    challenge_hash: bytes32
+    pos_hash: bytes32
+    end_of_sub_slot: bool
+    pool_contract_puzzle_hash: bytes32
 
 
 class GetPartialsResponse(TypedDict):
@@ -80,7 +84,7 @@ class Store(Protocol):
     async def get_launcher_ids(
         self, *, start: uint64 | None = None, count: uint64 | None = None
     ) -> GetLauncherIDsResponse: ...
-    async def add_partial(self, *, launcher_id: bytes32, timestamp: uint64, difficulty: uint64) -> None: ...
+    async def add_partial(self, *, launcher_id: bytes32, partial: PartialMetadata) -> None: ...
     async def get_partials(
         self,
         *,

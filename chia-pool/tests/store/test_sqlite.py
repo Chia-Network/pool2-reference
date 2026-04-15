@@ -111,92 +111,53 @@ async def test_sqlite_store(store_config: None, store_type: type[Store]) -> None
             created_height=farmer_1_singleton_2_created_height,
             exiting_height=uint32(13),
         )
+
+        def partial_metadata_at_index(i: int) -> PartialMetadata:
+            return PartialMetadata(
+                timestamp=uint64(i),
+                difficulty=uint64(i),
+                challenge_hash=thirty_two_bytes(id_num=7),
+                pos_hash=thirty_two_bytes(id_num=i),
+                end_of_sub_slot=False,
+                pool_contract_puzzle_hash=thirty_two_bytes(id_num=9),
+            )
+
         for i in range(3):
             await store.add_partial(
                 launcher_id=farmer_1_launcher_id,
-                timestamp=uint64(i),
-                difficulty=uint64(i),
+                partial=partial_metadata_at_index(i),
             )
+
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True) == GetPartialsResponse(
             partials=[]
         )
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=False) == GetPartialsResponse(
-            partials=[
-                PartialMetadata(
-                    timestamp=uint64(i),
-                    difficulty=uint64(i),
-                )
-                for i in range(3)
-            ]
+            partials=[partial_metadata_at_index(i) for i in range(3)]
         )
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=False, since=uint64(1)
-        ) == GetPartialsResponse(
-            partials=[
-                PartialMetadata(
-                    timestamp=uint64(i),
-                    difficulty=uint64(i),
-                )
-                for i in range(1, 3)
-            ]
-        )
+        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in range(1, 3)])
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=False, before=uint64(1)
-        ) == GetPartialsResponse(
-            partials=[
-                PartialMetadata(
-                    timestamp=uint64(i),
-                    difficulty=uint64(i),
-                )
-                for i in range(1)
-            ]
-        )
+        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in range(1)])
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=False, count=uint64(2)
         ) == GetPartialsResponse(
             partials=[
-                PartialMetadata(
-                    timestamp=uint64(2),
-                    difficulty=uint64(2),
-                ),
-                PartialMetadata(
-                    timestamp=uint64(1),
-                    difficulty=uint64(1),
-                ),
+                partial_metadata_at_index(2),
+                partial_metadata_at_index(1),
             ]
         )
-        await store.confirm_partials(launcher_id=farmer_1_launcher_id, until_timestamp=uint64(1))
+        await store.confirm_partials(launcher_id=farmer_1_launcher_id, until_timestamp=uint64(2))
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True) == GetPartialsResponse(
-            partials=[
-                PartialMetadata(
-                    timestamp=uint64(i),
-                    difficulty=uint64(i),
-                )
-                for i in range(2)
-            ]
+            partials=[partial_metadata_at_index(i) for i in range(2)]
         )
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=True, since=uint64(1)
-        ) == GetPartialsResponse(
-            partials=[
-                PartialMetadata(
-                    timestamp=uint64(i),
-                    difficulty=uint64(i),
-                )
-                for i in range(1, 2)
-            ]
-        )
+        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in range(1, 2)])
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=True, since=uint64(0), before=uint64(1)
-        ) == GetPartialsResponse(
-            partials=[
-                PartialMetadata(
-                    timestamp=uint64(i),
-                    difficulty=uint64(i),
-                )
-                for i in range(1)
-            ]
-        )
+        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in range(1)])
         await store.delete_partial(launcher_id=farmer_1_launcher_id, timestamp=uint64(2))
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=False) == GetPartialsResponse(
             partials=[]

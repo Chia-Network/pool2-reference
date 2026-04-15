@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import dataclasses
 from unittest.mock import PropertyMock, patch
 
 import aiohttp
 import pytest
 from api.service import Service as ServiceAPI
 from chia._tests.environments.wallet import WalletTestFramework
+from chia.pools.plotnft_drivers import RewardPuzzle
 from chia.protocols import pool_protocol
 from chia.util.keychain import mnemonic_to_seed
 from chia_rs import G2Element, PrivateKey
@@ -113,10 +115,12 @@ async def test_v2_rpc(
         recent_eos_hashes = wallet_envs.full_node.full_node.full_node_store.recent_eos.cache.keys()
         recent_sp_hashes = wallet_envs.full_node.full_node.full_node_store.recent_signage_points.cache.keys()
         use_eos_hash = len(list(recent_eos_hashes)) != 0
+        pos = (await wallet_envs.full_node.get_all_full_blocks())[-1].reward_chain_block.proof_of_space
+        pos = pos.replace(pool_contract_puzzle_hash=RewardPuzzle(singleton_id=bytes32.zeros).puzzle_hash())
         partial = pool_protocol.PostPartialPayload(
             launcher_id=bytes32.zeros,
             authentication_token=uint64(0),
-            proof_of_space=(await wallet_envs.full_node.get_all_full_blocks())[-1].reward_chain_block.proof_of_space,
+            proof_of_space=pos,
             sp_hash=next(iter(recent_eos_hashes if use_eos_hash else recent_sp_hashes)),
             end_of_sub_slot=use_eos_hash,
             harvester_id=bytes32.zeros,
@@ -124,11 +128,15 @@ async def test_v2_rpc(
         original_difficulty = (await service.store.get_farmer(launcher_id=bytes32.zeros))["difficulty"]
         with (
             patch("farmer_rpc.v2.AugSchemeMPL.aggregate_verify", return_value=True),
-            patch("farmer_rpc.v2.RewardPuzzle.puzzle_hash", return_value=None),
             patch("farmer_rpc.v2.verify_and_get_quality_string", return_value=bytes32.zeros),
             patch("farmer_rpc.v2.calculate_iterations_quality", return_value=uint64(10)),
         ):
-            for _ in range(3):
+            for i in range(3):
+                partial = (
+                    dataclasses.replace(  # we gotta shake up the POS a bit so the partials aren't deduped in the DB
+                        partial, proof_of_space=partial.proof_of_space.replace(challenge=bytes32([i] * 32))
+                    )
+                )
                 async with session.post(
                     f"{farmer_rpc_url}/v2/post_partial",
                     json=pool_protocol.PostPartialRequest(
@@ -139,7 +147,9 @@ async def test_v2_rpc(
                     ssl=False,
                 ) as resp:
                     pool_protocol.PostPartialResponse.from_json_dict(await resp.json())
-                await service.store.confirm_partials(launcher_id=bytes32.zeros, until_timestamp=service.current_time)
+                await service.store.confirm_partials(
+                    launcher_id=bytes32.zeros, until_timestamp=uint64(service.current_time + 1)
+                )
                 current_time.return_value += 1
 
         assert (await service.store.get_farmer(launcher_id=bytes32.zeros))["difficulty"] > original_difficulty

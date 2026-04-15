@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from unittest.mock import PropertyMock
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
+from api.node import GetRecentSignagePointOrEOSResponse
 from api.service import Service as ServiceAPI
+from api.store import PartialMetadata
 from chia._tests.conftest import (  # noqa: PLC2701
     blockchain_constants,  # noqa: F401
     consensus_mode,  # noqa: F401
@@ -14,6 +16,7 @@ from chia._tests.conftest import (  # noqa: PLC2701
 )
 from chia._tests.environments.wallet import WalletStateTransition, WalletTestFramework  # noqa: PLC2701
 from chia._tests.wallet.conftest import wallet_environments  # noqa: PLC2701, F401
+from chia.pools.plotnft_drivers import RewardPuzzle
 from chia.pools.pool_wallet_info import NewPoolWalletInitialTargetState, PoolSingletonState
 from chia.types.blockchain_format.program import Program
 from chia.wallet.plotnft_wallet.plotnft_wallet import PlotNFT2Wallet
@@ -84,6 +87,8 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
     farmer_2_difficulty = uint64(200)
     farmer_1_authentication_pubkey = (await farmer_1_wallet.get_current_plotnft()).user_config.synthetic_pubkey
     farmer_2_authentication_pubkey = (await farmer_2_wallet.get_current_plotnft()).user_config.synthetic_pubkey
+    farmer_1_rewards_hash = RewardPuzzle(singleton_id=farmer_1_launcher_id).puzzle_hash()
+    farmer_2_rewards_hash = RewardPuzzle(singleton_id=farmer_2_launcher_id).puzzle_hash()
 
     await service.store.add_farmer(
         version=uint8(2),
@@ -111,23 +116,82 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
 
     # Test partial confirmation
     await service.store.add_partial(
-        launcher_id=farmer_1_launcher_id, timestamp=service.current_time, difficulty=uint64(1)
+        launcher_id=farmer_1_launcher_id,
+        partial=PartialMetadata(
+            timestamp=service.current_time,
+            difficulty=uint64(1),
+            challenge_hash=bytes32.zeros,
+            pos_hash=thirty_two_bytes(id_num=1),
+            end_of_sub_slot=True,
+            pool_contract_puzzle_hash=farmer_1_rewards_hash,
+        ),
     )
     await service.store.add_partial(
-        launcher_id=farmer_2_launcher_id, timestamp=uint64(service.current_time + 1), difficulty=uint64(2)
+        launcher_id=farmer_2_launcher_id,
+        partial=PartialMetadata(
+            timestamp=uint64(service.current_time + 1),
+            difficulty=uint64(2),
+            challenge_hash=bytes32.zeros,
+            pos_hash=thirty_two_bytes(id_num=2),
+            end_of_sub_slot=False,
+            pool_contract_puzzle_hash=farmer_2_rewards_hash,
+        ),
+    )
+    await service.store.add_partial(
+        launcher_id=farmer_2_launcher_id,
+        partial=PartialMetadata(
+            timestamp=uint64(service.current_time + 2),
+            difficulty=uint64(2),
+            challenge_hash=bytes32.zeros,
+            pos_hash=thirty_two_bytes(id_num=3),
+            end_of_sub_slot=False,
+            pool_contract_puzzle_hash=farmer_2_rewards_hash,
+        ),
     )
     assert len((await service.store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True))["partials"]) == 0
     assert len((await service.store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=True))["partials"]) == 0
     await service.confirm_partials()
     assert len((await service.store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True))["partials"]) == 0
     assert len((await service.store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=True))["partials"]) == 0
-    current_time.return_value += service.config["partial_confirmation_delay"]
-    await service.confirm_partials()
+    current_time.return_value += service.config["partial_confirmation_delay"] + 1
+    with patch.object(
+        service.full_node,
+        "get_recent_end_of_subslot",
+        new=AsyncMock(
+            return_value=GetRecentSignagePointOrEOSResponse(
+                eos=PropertyMock(), signage_point=None, time_received=service.current_time, exists=True, reverted=False
+            )
+        ),
+    ):
+        await service.confirm_partials()
     assert len((await service.store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True))["partials"]) == 1
     assert len((await service.store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=True))["partials"]) == 0
     current_time.return_value += 1
-    await service.confirm_partials()
+    with patch.object(
+        service.full_node,
+        "get_recent_signage_point",
+        new=AsyncMock(
+            return_value=GetRecentSignagePointOrEOSResponse(
+                eos=None, signage_point=PropertyMock(), time_received=service.current_time, exists=True, reverted=False
+            )
+        ),
+    ):
+        await service.confirm_partials()
     assert len((await service.store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=True))["partials"]) == 1
+    assert len((await service.store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=False))["partials"]) == 1
+    current_time.return_value += 1
+    with patch.object(
+        service.full_node,
+        "get_recent_signage_point",
+        new=AsyncMock(
+            return_value=GetRecentSignagePointOrEOSResponse(
+                eos=None, signage_point=PropertyMock(), time_received=service.current_time, exists=True, reverted=True
+            )
+        ),
+    ):
+        await service.confirm_partials()
+    assert len((await service.store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=True))["partials"]) == 1
+    assert len((await service.store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=False))["partials"]) == 0
 
     # Test pool reward claims
     farmer_1_reward_amount = await wallet_envs.full_node.farm_blocks_to_puzzlehash(

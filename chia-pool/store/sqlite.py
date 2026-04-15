@@ -52,8 +52,12 @@ class Store:
                 await conn.execute(
                     "CREATE TABLE IF NOT EXISTS partials("
                     "launcher_id blob, "
-                    "timestamp bigint PRIMARY KEY, "
+                    "timestamp bigint, "
                     "difficulty bigint, "
+                    "challenge_hash blob, "
+                    "pos_hash blob PRIMARY KEY, "
+                    "end_of_subslot boolean, "
+                    "pool_contract_puzzle_hash blob, "
                     "confirmed boolean)"
                 )
                 await conn.execute(
@@ -161,12 +165,22 @@ class Store:
                 exiting_height=uint32(row[3]) if row[3] is not None else None,
             )
 
-    async def add_partial(self, *, launcher_id: bytes32, timestamp: uint64, difficulty: uint64) -> None:
+    async def add_partial(self, *, launcher_id: bytes32, partial: PartialMetadata) -> None:
         async with self.db_wrapper.writer_maybe_transaction() as conn:
             await conn.execute(
                 "INSERT OR REPLACE INTO partials "
-                "(launcher_id, timestamp, difficulty, confirmed) VALUES (?, ?, ?, FALSE)",
-                (launcher_id, timestamp, difficulty),
+                "(launcher_id, timestamp, difficulty, challenge_hash, pos_hash, "
+                "end_of_subslot, pool_contract_puzzle_hash, confirmed) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, FALSE)",
+                (
+                    launcher_id,
+                    partial.timestamp,
+                    partial.difficulty,
+                    partial.challenge_hash,
+                    partial.pos_hash,
+                    partial.end_of_sub_slot,
+                    partial.pool_contract_puzzle_hash,
+                ),
             )
 
     async def get_partials(
@@ -198,12 +212,24 @@ class Store:
             rows = await cursor.fetchall()
             if rows is None:
                 return GetPartialsResponse(partials=[])
-            return GetPartialsResponse(partials=[PartialMetadata(timestamp=row[1], difficulty=row[2]) for row in rows])
+            return GetPartialsResponse(
+                partials=[
+                    PartialMetadata(
+                        timestamp=row[1],
+                        difficulty=row[2],
+                        challenge_hash=bytes32(row[3]),
+                        pos_hash=bytes32(row[4]),
+                        end_of_sub_slot=bool(row[5]),
+                        pool_contract_puzzle_hash=bytes32(row[6]),
+                    )
+                    for row in rows
+                ]
+            )
 
     async def confirm_partials(self, *, launcher_id: bytes32, until_timestamp: uint64) -> None:
         async with self.db_wrapper.writer_maybe_transaction() as conn:
             await conn.execute(
-                "UPDATE partials SET confirmed = TRUE WHERE launcher_id = ? AND timestamp <= ?",
+                "UPDATE partials SET confirmed = TRUE WHERE launcher_id = ? AND timestamp < ?",
                 (launcher_id, until_timestamp),
             )
 
