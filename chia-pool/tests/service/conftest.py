@@ -22,7 +22,6 @@ async def service_config(wallet_envs: WalletTestFramework) -> AsyncIterator[None
     async with env.wallet_state_manager.new_action_scope(tx_config=wallet_envs.tx_config, push=True) as action_scope:
         puzzle_hash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
     with create_config(CONFIG_FILE_NAME) as config_path, config_path.open(mode="w", encoding="utf8") as file:
-        TODO = 0
         yaml.dump(
             {
                 "pool_identity": {
@@ -31,14 +30,12 @@ async def service_config(wallet_envs: WalletTestFramework) -> AsyncIterator[None
                     "pool_memoization": "80",
                 },
                 "min_difficulty": 0,
-                "default_difficulty": TODO,
-                "partial_time_limit": TODO,
+                "default_difficulty": 0,
+                "partial_time_limit": 60,
                 "partial_confirmation_delay": 600,  # 10 minutes
-                "scan_start_height": TODO,
-                "collect_pool_rewards_interval": TODO,
-                "confirmation_security_threshold": TODO,
-                "payment_interval": TODO,
-                "max_additions_per_transaction": TODO,
+                "scan_start_height": 0,
+                "confirmation_security_threshold": 0,
+                "max_additions_per_transaction": 100,
                 "number_of_partials_target": 2,
                 "time_target": 2,
                 "fee_basis_points": 1000,  # 10%

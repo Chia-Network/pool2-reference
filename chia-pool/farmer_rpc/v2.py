@@ -101,14 +101,10 @@ async def post_farmer(
     The farmer must prove that they exist and that they control the pooling singleton by signing a message with the key
     that controls exiting from the pool.
     """
-    if (
-        request.payload.authentication_public_key is None
-        or request.payload.payout_instructions is None
-        or request.payload.suggested_difficulty is None
-    ):
+    if request.payload.authentication_public_key is None or request.payload.payout_instructions is None:
         raise FarmerRPCError(
             code=pool_protocol.PoolErrorCode.REQUEST_FAILED,
-            message='Must have "authentication_public_key", "payout_instructions", and "suggested_difficulty" for POST',
+            message='Must have "authentication_public_key" and "payout_instructions" for POST',
         )
     # TODO: verify farmer exists and have the key sign a message
     await service.store.add_farmer(
@@ -116,7 +112,9 @@ async def post_farmer(
         launcher_id=request.payload.launcher_id,
         authentication_public_key=request.payload.authentication_public_key,
         payout_instructions=request.payload.payout_instructions,
-        difficulty=request.payload.suggested_difficulty,
+        difficulty=uint64(service.config["default_difficulty"])
+        if request.payload.suggested_difficulty is None
+        else request.payload.suggested_difficulty,
     )
     return pool_protocol.PostFarmerResponse(welcome_message=config["pool_info"]["welcome_message"])
 
@@ -180,7 +178,7 @@ async def get_pool_info(  # noqa: RUF029
         name=config["pool_info"]["name"],
         logo_url=config["pool_info"]["logo_url"],
         description=config["pool_info"]["description"],
-        minimum_difficulty=config["pool_info"]["minimum_difficulty"],
+        minimum_difficulty=uint64(service.config["min_difficulty"]),
         fee=str(uint16(service.config["fee_basis_points"])),
         authentication_token_timeout=config["authentication_token_timeout"],
         relative_lock_height=uint32(service.config["pool_identity"]["relative_lock_height"]),

@@ -33,7 +33,6 @@ class PoolInfoConfigSchema(Schema):
     logo_url = fields.URL(required=True)
     description = fields.Str(required=True)
     welcome_message = fields.Str(required=True)
-    minimum_difficulty = fields.Int(required=True)
 
 
 class WebConfigSchema(Schema):

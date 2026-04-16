@@ -46,9 +46,7 @@ class ServiceConfigSchema(Schema):
     partial_time_limit = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     partial_confirmation_delay = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     scan_start_height = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
-    collect_pool_rewards_interval = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     confirmation_security_threshold = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
-    payment_interval = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     max_additions_per_transaction = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
     number_of_partials_target = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
     time_target = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
@@ -69,9 +67,7 @@ class ServiceConfig(TypedDict):
     partial_time_limit: int
     partial_confirmation_delay: int
     scan_start_height: int
-    collect_pool_rewards_interval: int
     confirmation_security_threshold: int
-    payment_interval: int
     max_additions_per_transaction: int
     number_of_partials_target: int
     time_target: int

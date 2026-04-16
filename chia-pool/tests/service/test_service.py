@@ -35,6 +35,7 @@ def thirty_two_bytes(*, id_num: int) -> bytes32:
     indirect=True,
 )
 @pytest.mark.anyio
+@pytest.mark.standard_block_tools
 async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], wallet_envs: WalletTestFramework) -> None:
     service, current_time = reference_service
 

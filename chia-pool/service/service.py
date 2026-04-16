@@ -84,6 +84,7 @@ class Service:
         The purpose of this task is to follow farmer singletons to monitor for any exits initiated or completed.
         """
         # TODO: v1
+        peak_height = (await self.full_node.get_blockchain_state())["peak"]
         launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
         for launcher_id in launcher_id_response["launcher_ids"]:
             farmer_response = await self.store.get_farmer(launcher_id=launcher_id)
@@ -102,19 +103,24 @@ class Service:
             plotnfts_response = await self.full_node.get_coin_records_by_puzzle_hashes(
                 puzzle_hashes=[plotnft_puzzle.puzzle_hash(nonce=0), plotnft_puzzle_exiting.puzzle_hash(nonce=0)],
                 include_spent_coins=False,
-                start_height=uint32(0),  # TODO: persist height scanned
+                start_height=uint32(self.config["scan_start_height"]),  # TODO: persist height scanned
             )
             if len(plotnfts_response["coin_records"]) > 1:
                 raise ValueError("Multiple plot NFTs found")
             if len(plotnfts_response["coin_records"]) == 0:
                 raise ValueError("No plot NFT found")  # TODO: delete farmer?
             plotnft_coin = plotnfts_response["coin_records"][0]
+            if plotnft_coin.confirmed_block_index > peak_height - self.config["confirmation_security_threshold"]:
+                continue
             if plotnft_coin.coin.puzzle_hash == plotnft_puzzle_exiting.puzzle_hash(nonce=0):
                 exiting_height = uint32(
                     plotnft_coin.confirmed_block_index + self.config["pool_identity"]["relative_lock_height"]
                 )
             else:
                 exiting_height = None
+            # TODO: some re-org robustness might be nice
+            # If somehow this gets added and then a reorg makes it happen at an earlier block height,
+            # we're going to be in an awkward state
             await self.store.add_singleton(
                 launcher_id=launcher_id,
                 coin_id=plotnft_coin.coin.name(),
@@ -127,6 +133,7 @@ class Service:
         The purpose of this task is to forward to the pool any pool rewards that farmers have successfully farmed.
         """
         # TODO: v1
+        peak_height = (await self.full_node.get_blockchain_state())["peak"]
         launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
         launcher_id_to_reward_hash: dict[bytes32, bytes32] = {}
         for launcher_id in launcher_id_response["launcher_ids"]:
@@ -135,7 +142,7 @@ class Service:
         response = await self.full_node.get_coin_records_by_puzzle_hashes(
             puzzle_hashes=list(launcher_id_to_reward_hash.values()),
             include_spent_coins=False,
-            start_height=uint32(0),  # TODO: persist height scanned
+            start_height=uint32(self.config["scan_start_height"]),  # TODO: persist height scanned
         )
 
         reward_hashes = set(cr.coin.puzzle_hash for cr in response["coin_records"])
@@ -166,6 +173,7 @@ class Service:
                 for reward_record in response["coin_records"]
                 if reward_record.coin.puzzle_hash == launcher_id_to_reward_hash[launcher_id]
                 and reward_record.coin.parent_coin_info[0:16] == bytes.fromhex(self.config["genesis_challenge"])[0:16]
+                and reward_record.confirmed_block_index <= peak_height - self.config["confirmation_security_threshold"]
             ]
             if len(all_rewards) > 0:
                 all_spends.extend(
@@ -181,10 +189,11 @@ class Service:
 
         # TODO: fee
         # TODO: persist and check tx_ids
-        await self.wallet.submit_transaction(spend_bundle=SpendBundle(all_spends, G2Element()), fee=uint64(0))
-        await self.store.add_reward_claim(  # TODO: make contingent on tx confirmation
-            timestamp=self.current_time, amount=uint64(reward_amount)
-        )
+        if len(all_spends) > 0:
+            await self.wallet.submit_transaction(spend_bundle=SpendBundle(all_spends, G2Element()), fee=uint64(0))
+            await self.store.add_reward_claim(  # TODO: make contingent on tx confirmation
+                timestamp=self.current_time, amount=uint64(reward_amount)
+            )
 
     async def submit_payments(self) -> None:
         """
@@ -230,20 +239,26 @@ class Service:
         # TODO: fee
         # TODO: persist and check tx_ids
         # TODO: persist claims pending payouts
-        # TODO: batch
-        if len(payouts) > 0:
-            await self.wallet.send_transaction(
-                payments=[
-                    Payment(
-                        puzzle_hash=(puzzle_hash := convert_payout_instructions(user_payout_instructions[user])),
-                        amount=uint64(amount),
-                        memos=[puzzle_hash.hex()],
-                    )
-                    for user, amount in payouts.items()
-                ],
-                fee=uint64(0),
-            )
-            await self.store.add_payout(
-                timestamp=timestamp,
-                payout_details="",  # TODO: delete this?
-            )
+        for i in range(0, len(payouts), self.config["max_additions_per_transaction"]):
+            payout_batch = {
+                user: payouts[user]
+                for user in list(payouts.keys())[
+                    i : max(i + self.config["max_additions_per_transaction"], len(payouts))
+                ]
+            }
+            if len(payout_batch) > 0:
+                await self.wallet.send_transaction(
+                    payments=[
+                        Payment(
+                            puzzle_hash=(puzzle_hash := convert_payout_instructions(user_payout_instructions[user])),
+                            amount=uint64(amount),
+                            memos=[puzzle_hash.hex()],
+                        )
+                        for user, amount in payout_batch.items()
+                    ],
+                    fee=uint64(0),
+                )
+                await self.store.add_payout(
+                    timestamp=timestamp,
+                    payout_details="",  # TODO: delete this?
+                )
