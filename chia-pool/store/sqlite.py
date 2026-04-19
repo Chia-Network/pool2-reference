@@ -4,9 +4,10 @@ import contextlib
 from collections.abc import AsyncIterator
 from pathlib import Path
 
-import yaml
 from api.store import (
+    CONFIG_FILE_NAME,
     ClaimMetadata,
+    Config,
     GetFarmerResponse,
     GetLatestPayoutResponse,
     GetLatestSingletonResponse,
@@ -19,7 +20,8 @@ from chia.util.db_wrapper import DBWrapper2
 from chia_rs import G1Element
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint32, uint64
-from store.config import CONFIG_FILE_NAME, Config, load
+from config_loading import canonical_load_config
+from store.config import ConfigSchema
 from typing_extensions import Self
 
 
@@ -29,11 +31,11 @@ class Store:
 
     @classmethod
     @contextlib.asynccontextmanager
-    async def create(cls) -> AsyncIterator[Self]:
+    async def create(cls, root_path: Path) -> AsyncIterator[Self]:
         store = cls()
-        with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
-            config_data = yaml.safe_load(file)
-        config: Config = load(config_data)
+        config = canonical_load_config(
+            root_path=root_path, config_filename=CONFIG_FILE_NAME, schema_validation=ConfigSchema(), config_type=Config
+        )
         store.config = config
         async with DBWrapper2.managed(database=Path(config["store_path"])) as store.db_wrapper:
             async with store.db_wrapper.writer_maybe_transaction() as conn:

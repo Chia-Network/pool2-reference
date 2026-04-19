@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import logging
+import pathlib
 from asyncio import sleep
 from asyncio.tasks import Task, create_task
 from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import asynccontextmanager
 from typing import Any
 
+from api.server import CONFIG_FILE_NAME, Config
 from api.service import Service
-from server.config import canonical_load_config
+from config_loading import canonical_load_config
+from server.config import ConfigSchema
 from server.logging import setup_logging
 
 
@@ -41,9 +44,12 @@ class PoolServer:
         cls,
         *,
         service: Service,
+        root_path: pathlib.Path,
     ) -> AsyncIterator[None]:
         self = cls()
-        config = canonical_load_config()
+        config = canonical_load_config(
+            root_path=root_path, config_filename=CONFIG_FILE_NAME, schema_validation=ConfigSchema(), config_type=Config
+        )
         self.logger = logging.getLogger("pool_server")
         setup_logging(self.logger, config["logging"])
 

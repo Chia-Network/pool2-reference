@@ -4,8 +4,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import yaml
-from api.wallet import GetTransactionStatusResponse, Payment, SendTransactionResponse, SubmitTransactionResponse
+from api.rpc import Config
+from api.wallet_rpc import (
+    CONFIG_FILE_NAME,
+    GetTransactionStatusResponse,
+    Payment,
+    SendTransactionResponse,
+    SubmitTransactionResponse,
+)
 from chia.util.bech32m import encode_puzzle_hash
 from chia.wallet.conditions import ConditionValidTimes
 from chia.wallet.transaction_record import TransactionRecord
@@ -23,9 +29,9 @@ from chia.wallet.wallet_spend_bundle import WalletSpendBundle
 from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16, uint32, uint64
-from chia_service_config import Config, load
+from config_loading import canonical_load_config
+from rpc import ConfigSchema
 from typing_extensions import Self
-from wallet.config import CONFIG_FILE_NAME
 
 
 class WalletRPC:
@@ -34,11 +40,11 @@ class WalletRPC:
 
     @classmethod
     @asynccontextmanager
-    async def create(cls) -> AsyncIterator[Self]:
+    async def create(cls, root_path: Path) -> AsyncIterator[Self]:
         self = cls()
-        with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
-            config_data = yaml.safe_load(file)
-        config: Config = load(config_data)
+        config = canonical_load_config(
+            root_path=root_path, config_filename=CONFIG_FILE_NAME, schema_validation=ConfigSchema(), config_type=Config
+        )
         self.config = config
         async with WalletRpcClient.create_as_context(
             self_hostname=self.config["self_hostname"],

@@ -6,7 +6,7 @@ import logging.handlers
 import pathlib
 import shutil
 
-from server.config import LoggingConfig
+from api.server import LoggingConfig
 
 
 def gzip_rotator(source: str, dest: str) -> None:

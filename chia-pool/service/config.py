@@ -6,9 +6,6 @@ from chia.types.blockchain_format.program import Program
 from chia_rs.sized_bytes import bytes32
 from marshmallow import Schema, ValidationError, fields, validates
 from marshmallow.validate import Validator
-from typing_extensions import TypedDict
-
-CONFIG_FILE_NAME = "pool_service_client_config.yaml"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -39,7 +36,7 @@ class PoolIdentitySchema(Schema):
             raise ValidationError("Pool memoization must be a valid hex string") from err
 
 
-class ServiceConfigSchema(Schema):
+class ConfigSchema(Schema):
     pool_identity = fields.Nested(PoolIdentitySchema)
     min_difficulty = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     default_difficulty = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
@@ -52,29 +49,3 @@ class ServiceConfigSchema(Schema):
     time_target = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     fee_basis_points = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     genesis_challenge = fields.Str(required=True)
-
-
-class PoolIdentityConfig(TypedDict):
-    relative_lock_height: int
-    pool_claim_hash: str
-    pool_memoization: str
-
-
-class ServiceConfig(TypedDict):
-    pool_identity: PoolIdentityConfig
-    min_difficulty: int
-    default_difficulty: int
-    partial_time_limit: int
-    partial_confirmation_delay: int
-    scan_start_height: int
-    confirmation_security_threshold: int
-    max_additions_per_transaction: int
-    number_of_partials_target: int
-    time_target: int
-    fee_basis_points: int
-    genesis_challenge: str
-
-
-def load(data: ServiceConfig) -> ServiceConfig:
-    ServiceConfigSchema().load(data)
-    return data

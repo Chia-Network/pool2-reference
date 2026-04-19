@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pathlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -35,9 +36,12 @@ class GetTransactionStatusResponse(TypedDict):
 class Wallet(Protocol):
     @classmethod
     @asynccontextmanager
-    async def create(cls) -> AsyncIterator[Self]:
+    async def create(cls, root_path: pathlib.Path) -> AsyncIterator[Self]:
         yield cls()
 
     async def send_transaction(self, *, payments: list[Payment], fee: uint64) -> SendTransactionResponse: ...
     async def submit_transaction(self, *, spend_bundle: SpendBundle, fee: uint64) -> SubmitTransactionResponse: ...
     async def get_transaction_status(self, *, tx_id: bytes32) -> GetTransactionStatusResponse: ...
+
+
+CONFIG_FILE_NAME = "pool_wallet_client_config.yaml"

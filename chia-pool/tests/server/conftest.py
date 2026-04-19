@@ -4,9 +4,9 @@ import pathlib
 from collections.abc import Iterator
 
 import pytest
+from api.server import CONFIG_FILE_NAME
 from click.testing import CliRunner
 from reference import cli
-from server.config import CONFIG_FILE_NAME
 from tests.config_creation import create_config
 
 
@@ -44,8 +44,6 @@ def server_config(generate_ssl_cert: tuple[pathlib.Path, pathlib.Path]) -> Itera
                 "",
                 "--pool-welcome-message",
                 "",
-                "--pool-minimum-difficulty",
-                "0",
                 "--web-host",
                 "localhost",
                 "--web-port",

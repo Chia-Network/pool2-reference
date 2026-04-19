@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pathlib
 from collections.abc import AsyncIterator, Iterator
 from unittest.mock import PropertyMock, patch
 
@@ -23,13 +24,16 @@ def _patch_adjusted_timeout_longer() -> Iterator[None]:
 
 
 @pytest.fixture
-async def farmer_rpc_url(server_config: None, reference_service: tuple[ServiceAPI, PropertyMock]) -> AsyncIterator[str]:
+async def farmer_rpc_url(
+    server_config: None, reference_service: tuple[ServiceAPI, PropertyMock], root_path: pathlib.Path
+) -> AsyncIterator[str]:
     service, _ = reference_service
     async with FarmerRPCServer.create_rpc(
         farmer_rpcs={"v2": METADATA},
         handlers={"v2": HANDLERS},
         service=service,
         token_sk=bytes32.zeros,
+        root_path=root_path,
     ) as farmer_rpc:
         # not sure what pyright is on about, this works fine
         port = farmer_rpc.site._server.sockets[0].getsockname()[1]  # type: ignore  # noqa: PGH003

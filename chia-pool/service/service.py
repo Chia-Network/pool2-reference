@@ -1,27 +1,28 @@
 from __future__ import annotations
 
+import pathlib
 import time
 from dataclasses import replace
-from pathlib import Path
 
-import yaml
-from api.node import FullNode
+from api.node_rpc import NodeRPC
+from api.service import CONFIG_FILE_NAME, Config
 from api.store import PartialMetadata, Store
-from api.wallet import Payment, Wallet
+from api.wallet_rpc import Payment, Wallet
 from chia.pools.plotnft_drivers import PlotNFT, PlotNFTPuzzle, PoolConfig, PoolReward, RewardPuzzle, UserConfig
 from chia.types.blockchain_format.program import Program
 from chia.util.bech32m import decode_puzzle_hash
 from chia_rs import G2Element, SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32, uint64
-from service.config import CONFIG_FILE_NAME, ServiceConfig, load
+from config_loading import canonical_load_config
+from service.config import ConfigSchema
 from typing_extensions import Self
 
 
 async def confirm_partial(
     *,
     partial: PartialMetadata,
-    node_rpc: FullNode,
+    node_rpc: NodeRPC,
 ) -> bool:
     if partial.end_of_sub_slot:
         response = await node_rpc.get_recent_end_of_subslot(challenge_hash=partial.challenge_hash)
@@ -38,20 +39,20 @@ def convert_payout_instructions(payout_instructions: str) -> bytes32:
 
 class Service:
     store: Store
-    full_node: FullNode
+    full_node: NodeRPC
     wallet: Wallet
-    config: ServiceConfig
+    config: Config
 
     @property
     def current_time(self) -> uint64:
         return uint64(time.time())
 
     @classmethod
-    def create(cls, *, store: Store, full_node: FullNode, wallet: Wallet) -> Self:
+    def create(cls, *, store: Store, full_node: NodeRPC, wallet: Wallet, root_path: pathlib.Path) -> Self:
         self = cls()
-        with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
-            config_data = yaml.safe_load(file)
-        config: ServiceConfig = load(config_data)
+        config = canonical_load_config(
+            root_path=root_path, config_filename=CONFIG_FILE_NAME, schema_validation=ConfigSchema(), config_type=Config
+        )
         self.config = config
         self.store = store
         self.full_node = full_node

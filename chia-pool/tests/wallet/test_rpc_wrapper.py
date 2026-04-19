@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import pathlib
 from typing import TYPE_CHECKING
 
 import pytest
-from api.wallet import Payment, Wallet
+from api.wallet_rpc import Payment, Wallet
 from chia._tests.environments.wallet import WalletStateTransition, WalletTestFramework  # noqa: PLC2701
 from chia.types.coin_spend import make_spend
 from chia.wallet.conditions import CreateCoin
@@ -22,8 +23,8 @@ if TYPE_CHECKING:
     indirect=True,
 )
 @pytest.mark.anyio
-async def test_rpc_wrapper(wallet_config: None, wallet_envs: WalletTestFramework) -> None:
-    async with WalletRPC.create() as rpc_client:
+async def test_rpc_wrapper(wallet_config: None, wallet_envs: WalletTestFramework, root_path: pathlib.Path) -> None:
+    async with WalletRPC.create(root_path=root_path) as rpc_client:
         AMOUNT_SENT = uint64(100)
         FEE = uint64(50)
         response = await rpc_client.send_transaction(

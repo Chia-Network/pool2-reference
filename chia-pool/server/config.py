@@ -1,13 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Literal
-
-import yaml
 from marshmallow import Schema, ValidationError, fields, validates
-from typing_extensions import TypedDict
-
-CONFIG_FILE_NAME = "pool_server_config.yaml"
 
 
 class LoggingConfigSchema(Schema):
@@ -47,49 +40,3 @@ class ConfigSchema(Schema):
     web_config = fields.Nested(WebConfigSchema)
     service_loop_intervals = fields.Int(required=True)
     authentication_token_timeout = fields.Int(required=True)
-
-
-class LoggingConfig(TypedDict):
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"]
-    log_stdout: bool
-    log_syslog: bool
-    log_syslog_host: str
-    log_syslog_port: int
-    log_filename: str
-    log_maxfilesrotation: int
-    log_max_bytes_rotation: int
-    log_use_gzip: bool
-
-
-class PoolInfoConfig(TypedDict):
-    name: str
-    logo_url: str
-    description: str
-    welcome_message: str
-    minimum_difficulty: int
-
-
-class WebConfig(TypedDict):
-    host: str
-    port: int
-    ssl_cert_path: str
-    ssl_key_path: str
-
-
-class Config(TypedDict):
-    logging: LoggingConfig
-    pool_info: PoolInfoConfig
-    service_loop_intervals: int
-    web_config: WebConfig
-    authentication_token_timeout: int
-
-
-def load(data: Config) -> Config:
-    ConfigSchema().load(data)
-    return data
-
-
-def canonical_load_config() -> Config:
-    with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
-        config_data = yaml.safe_load(file)
-    return Config(config_data)

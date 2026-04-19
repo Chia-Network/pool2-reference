@@ -5,25 +5,15 @@ import pathlib
 from collections.abc import Callable
 from typing import Literal
 
+import api
 import click
 import yaml
 from chia_rs.sized_bytes import bytes32
-from chia_service_config import Config as ChiaServiceConfig
-from chia_service_config import DaemonSSLConfig, NetConfig, PrivateSSLConfig
-from node.config import CONFIG_FILE_NAME as NODE_CONFIG_FILE
 from node.rpc_wrapper import NodeRPC
-from server.config import CONFIG_FILE_NAME as SERVER_CONFIG_FILE
-from server.config import Config as ServerConfig
-from server.config import LoggingConfig, PoolInfoConfig, WebConfig
 from server.farmer_rpc import FarmerRPCServer
 from server.pooling_tasks import PoolServer
-from service.config import CONFIG_FILE_NAME as SERVICE_CONFIG_FILE
-from service.config import PoolIdentityConfig, ServiceConfig
 from service.service import Service
-from store.config import CONFIG_FILE_NAME as STORE_CONFIG_FILE
-from store.config import Config as StoreConfig
 from store.sqlite import Store
-from wallet.config import CONFIG_FILE_NAME as WALLET_CONFIG_FILE
 from wallet.rpc_wrapper import WalletRPC
 
 
@@ -32,21 +22,28 @@ def cli() -> None:
     pass
 
 
-async def start_async(auth_sk: bytes32) -> None:
-    async with NodeRPC.create() as node_rpc, WalletRPC.create() as wallet_rpc, Store.create() as store:
-        service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc)
+async def start_async(*, auth_sk: bytes32, root_path: pathlib.Path) -> None:
+    async with (
+        NodeRPC.create(root_path=root_path) as node_rpc,
+        WalletRPC.create(root_path=root_path) as wallet_rpc,
+        Store.create(root_path=root_path) as store,
+    ):
+        service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc, root_path=root_path)
         async with (
-            PoolServer.create_pool_tasks(service=service),
-            FarmerRPCServer.create_rpc(farmer_rpcs={}, handlers={}, service=service, token_sk=auth_sk),
+            PoolServer.create_pool_tasks(service=service, root_path=root_path),
+            FarmerRPCServer.create_rpc(
+                farmer_rpcs={}, handlers={}, service=service, token_sk=auth_sk, root_path=root_path
+            ),
         ):
             await asyncio.Event().wait()
 
 
 @cli.command()
 @click.option("--auth-sk", type=str, required=True, help="The 32-byte secret key to use for farmer authentication")
-def start(auth_sk: str) -> None:
+@click.option("--root-path", type=pathlib.Path, required=True, help="The root path for the config files")
+def start(auth_sk: str, root_path: pathlib.Path) -> None:
     """Start the application."""
-    asyncio.run(start_async(bytes32.from_hexstr(auth_sk)))
+    asyncio.run(start_async(auth_sk=bytes32.from_hexstr(auth_sk), root_path=root_path))
 
 
 @cli.group(short_help="Create config files")
@@ -55,7 +52,9 @@ def config() -> None:
 
 
 def create_config(
-    *, config_path: pathlib.Path, config_info: StoreConfig | ChiaServiceConfig | ServiceConfig | ServerConfig
+    *,
+    config_path: pathlib.Path,
+    config_info: api.store.Config | api.rpc.Config | api.service.Config | api.server.Config,
 ) -> None:
     if not config_path.exists():
         config_path.touch()
@@ -78,7 +77,8 @@ root_path_option = click.option(
 @click.option("--store-path", type=click.Path(exists=False), required=True, help="The path to the store database file")
 def store(*, root_path: str, store_path: str) -> None:
     create_config(
-        config_path=pathlib.Path(root_path).joinpath(STORE_CONFIG_FILE), config_info=StoreConfig(store_path=store_path)
+        config_path=pathlib.Path(root_path).joinpath(api.store.CONFIG_FILE_NAME),
+        config_info=api.store.Config(store_path=store_path),
     )
 
 
@@ -149,18 +149,18 @@ def node(
     private_ssl_key: str,
 ) -> None:
     create_config(
-        config_path=pathlib.Path(root_path).joinpath(NODE_CONFIG_FILE),
-        config_info=ChiaServiceConfig(
+        config_path=pathlib.Path(root_path).joinpath(api.node_rpc.CONFIG_FILE_NAME),
+        config_info=api.rpc.Config(
             self_hostname=hostname,
             rpc_port=rpc_port,
             root_path=chia_root,
-            net_config=NetConfig(
+            net_config=api.rpc.NetConfig(
                 rpc_timeout=rpc_timeout,
-                daemon_ssl=DaemonSSLConfig(
+                daemon_ssl=api.rpc.DaemonSSLConfig(
                     private_crt=daemon_ssl_crt,
                     private_key=daemon_ssl_key,
                 ),
-                private_ssl_ca=PrivateSSLConfig(
+                private_ssl_ca=api.rpc.PrivateSSLConfig(
                     crt=private_ssl_crt,
                     key=private_ssl_key,
                 ),
@@ -185,18 +185,18 @@ def wallet(
     private_ssl_key: str,
 ) -> None:
     create_config(
-        config_path=pathlib.Path(root_path).joinpath(WALLET_CONFIG_FILE),
-        config_info=ChiaServiceConfig(
+        config_path=pathlib.Path(root_path).joinpath(api.wallet_rpc.CONFIG_FILE_NAME),
+        config_info=api.rpc.Config(
             self_hostname=hostname,
             rpc_port=rpc_port,
             root_path=chia_root,
-            net_config=NetConfig(
+            net_config=api.rpc.NetConfig(
                 rpc_timeout=rpc_timeout,
-                daemon_ssl=DaemonSSLConfig(
+                daemon_ssl=api.rpc.DaemonSSLConfig(
                     private_crt=daemon_ssl_crt,
                     private_key=daemon_ssl_key,
                 ),
-                private_ssl_ca=PrivateSSLConfig(
+                private_ssl_ca=api.rpc.PrivateSSLConfig(
                     crt=private_ssl_crt,
                     key=private_ssl_key,
                 ),
@@ -334,9 +334,9 @@ def service(
     genesis_challenge: str,
 ) -> None:
     create_config(
-        config_path=pathlib.Path(root_path).joinpath(SERVICE_CONFIG_FILE),
-        config_info=ServiceConfig(
-            pool_identity=PoolIdentityConfig(
+        config_path=pathlib.Path(root_path).joinpath(api.service.CONFIG_FILE_NAME),
+        config_info=api.service.Config(
+            pool_identity=api.service.PoolIdentityConfig(
                 relative_lock_height=relative_lock_height,
                 pool_claim_hash=pool_wallet_address,
                 pool_memoization=pool_memoization,
@@ -460,14 +460,6 @@ def service(
     default="",
 )
 @click.option(
-    "--pool-minimum-difficulty",
-    type=int,
-    required=True,
-    help="The minimum difficulty shown in pool info",
-    show_default=True,
-    default=0,
-)
-@click.option(
     "--web-host",
     type=str,
     required=True,
@@ -527,7 +519,6 @@ def server(
     pool_logo_url: str,
     pool_description: str,
     pool_welcome_message: str,
-    pool_minimum_difficulty: int,
     web_host: str,
     web_port: int,
     ssl_cert_path: str,
@@ -536,9 +527,9 @@ def server(
     authentication_token_timeout: int,
 ) -> None:
     create_config(
-        config_path=pathlib.Path(root_path).joinpath(SERVER_CONFIG_FILE),
-        config_info=ServerConfig(
-            logging=LoggingConfig(
+        config_path=pathlib.Path(root_path).joinpath(api.server.CONFIG_FILE_NAME),
+        config_info=api.server.Config(
+            logging=api.server.LoggingConfig(
                 log_level=log_level,
                 log_stdout=log_stdout,
                 log_syslog=log_syslog,
@@ -549,14 +540,13 @@ def server(
                 log_max_bytes_rotation=log_max_bytes_rotation,
                 log_use_gzip=log_use_gzip,
             ),
-            pool_info=PoolInfoConfig(
+            pool_info=api.server.PoolInfoConfig(
                 name=pool_name,
                 logo_url=pool_logo_url,
                 description=pool_description,
                 welcome_message=pool_welcome_message,
-                minimum_difficulty=pool_minimum_difficulty,
             ),
-            web_config=WebConfig(
+            web_config=api.server.WebConfig(
                 host=web_host,
                 port=web_port,
                 ssl_cert_path=ssl_cert_path,

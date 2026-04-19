@@ -4,20 +4,21 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import yaml
-from api.node import (
+from api.node_rpc import (
+    CONFIG_FILE_NAME,
     GetBlockchainStateResponse,
     GetCoinRecordByNameResponse,
     GetCoinRecordsByPuzzleHashesResponse,
     GetPuzzleAndSolutionResponse,
     GetRecentSignagePointOrEOSResponse,
 )
+from api.rpc import Config
 from chia.full_node.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.rpc_client import ResponseFailureError
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16, uint32, uint64
-from chia_service_config import Config, load
-from node.config import CONFIG_FILE_NAME
+from config_loading import canonical_load_config
+from rpc import ConfigSchema
 from typing_extensions import Self
 
 
@@ -27,11 +28,11 @@ class NodeRPC:
 
     @classmethod
     @asynccontextmanager
-    async def create(cls) -> AsyncIterator[Self]:
+    async def create(cls, root_path: Path) -> AsyncIterator[Self]:
         self = cls()
-        with Path.cwd().joinpath(CONFIG_FILE_NAME).open(mode="r") as file:
-            config_data = yaml.safe_load(file)
-        config: Config = load(config_data)
+        config = canonical_load_config(
+            root_path=root_path, config_filename=CONFIG_FILE_NAME, schema_validation=ConfigSchema(), config_type=Config
+        )
         self.config = config
         async with FullNodeRpcClient.create_as_context(
             self_hostname=self.config["self_hostname"],

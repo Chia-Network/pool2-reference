@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 import datetime
 
-from api.node import FullNode
-from api.service import Service, ServiceConfig
+from api.node_rpc import NodeRPC
+from api.server import Config as ServerConfig
+from api.service import Config as ServiceConfig
+from api.service import Service
 from api.store import GetFarmerResponse, PartialMetadata, Store
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.consensus.pot_iterations import calculate_iterations_quality
@@ -16,11 +18,10 @@ from chia_rs import AugSchemeMPL, G2Element, Program
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
 from farmer_rpc.api import APIEndpointMetadata, FarmerRPCError
-from server.config import Config
 
 
 async def get_auth(
-    request: pool_protocol.GetAuthRequest, service: Service, config: Config, token_sk: bytes32
+    request: pool_protocol.GetAuthRequest, service: Service, config: ServerConfig, token_sk: bytes32
 ) -> pool_protocol.GetAuthResponse:
     """
     This endpoint can be called by an existing farmer to obtain an authentication token to be used with many of the
@@ -54,13 +55,13 @@ async def get_auth(
             token_sk=token_sk.hex(),
             plotnft_id=request.payload.launcher_id,
             current_time=datetime.datetime.fromtimestamp(service.current_time, tz=datetime.timezone.utc),
-            expires_minutes=config["authentication_token_timeout"],
+            expires_minutes=uint8(config["authentication_token_timeout"]),
         ),
     )
 
 
 async def get_farmer(
-    request: pool_protocol.GetFarmerRequest, service: Service, config: Config, token_sk: bytes32
+    request: pool_protocol.GetFarmerRequest, service: Service, config: ServerConfig, token_sk: bytes32
 ) -> pool_protocol.GetFarmerResponse:
     """
     This endpoint requires an authentication token.
@@ -93,7 +94,7 @@ async def get_farmer(
 
 
 async def post_farmer(
-    request: pool_protocol.PostFarmerRequest, service: Service, config: Config, token_sk: bytes32
+    request: pool_protocol.PostFarmerRequest, service: Service, config: ServerConfig, token_sk: bytes32
 ) -> pool_protocol.PostFarmerResponse:
     """
     This endpoint may be called by anybody to add a new farmer to the pool.
@@ -120,7 +121,7 @@ async def post_farmer(
 
 
 async def put_farmer(
-    request: pool_protocol.PutFarmerRequest, service: Service, config: Config, token_sk: bytes32
+    request: pool_protocol.PutFarmerRequest, service: Service, config: ServerConfig, token_sk: bytes32
 ) -> pool_protocol.PutFarmerResponse:
     """
     This endpoint requires an authentication token.
@@ -166,7 +167,7 @@ async def put_farmer(
 async def get_pool_info(  # noqa: RUF029
     request: None,
     service: Service,
-    config: Config,
+    config: ServerConfig,
     token_sk: bytes32,
 ) -> pool_protocol.GetPoolInfoResponse:
     """
@@ -180,7 +181,7 @@ async def get_pool_info(  # noqa: RUF029
         description=config["pool_info"]["description"],
         minimum_difficulty=uint64(service.config["min_difficulty"]),
         fee=str(uint16(service.config["fee_basis_points"])),
-        authentication_token_timeout=config["authentication_token_timeout"],
+        authentication_token_timeout=uint8(config["authentication_token_timeout"]),
         relative_lock_height=uint32(service.config["pool_identity"]["relative_lock_height"]),
         target_puzzle_hash=bytes32.from_hexstr(service.config["pool_identity"]["pool_claim_hash"]),
         pool_memoization=Program.fromhex(service.config["pool_identity"]["pool_memoization"]),
@@ -190,7 +191,7 @@ async def get_pool_info(  # noqa: RUF029
 async def check_partial(
     *,
     partial: pool_protocol.PostPartialPayload,
-    node_rpc_client: FullNode,
+    node_rpc_client: NodeRPC,
     agg_sig: G2Element,
     farmer_record: GetFarmerResponse,
     launcher_id: bytes32,
@@ -341,7 +342,7 @@ async def adjust_difficulty(
 
 
 async def post_partial(
-    request: pool_protocol.PostPartialRequest, service: Service, config: Config, token_sk: bytes32
+    request: pool_protocol.PostPartialRequest, service: Service, config: ServerConfig, token_sk: bytes32
 ) -> pool_protocol.PostPartialResponse:
     """
     This endpoint requires an authentication token.
@@ -393,7 +394,7 @@ METADATA = [
     APIEndpointMetadata(
         endpoint_name="get_auth",
         request_type="GET",
-        request=pool_protocol.AuthenticationPayloadV2,
+        request=pool_protocol.GetAuthRequest,
         response=pool_protocol.GetAuthResponse,
     ),
     APIEndpointMetadata(

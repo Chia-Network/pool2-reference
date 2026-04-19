@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pathlib
 from typing import TYPE_CHECKING
 
 import pytest
@@ -29,7 +30,7 @@ def thirty_two_bytes(*, id_num: int) -> bytes32:
 
 @pytest.mark.parametrize("store_type", [SqliteStore])
 @pytest.mark.anyio
-async def test_sqlite_store(store_config: None, store_type: type[Store]) -> None:
+async def test_sqlite_store(store_config: None, store_type: type[Store], root_path: pathlib.Path) -> None:
     farmer_1_launcher_id = thirty_two_bytes(id_num=1)
     farmer_2_launcher_id = thirty_two_bytes(id_num=2)
     farmer_1_payout_instructions = "cash money"
@@ -46,7 +47,7 @@ async def test_sqlite_store(store_config: None, store_type: type[Store]) -> None
             "a00d36e34beda30c3cd6d5fba20daae798703c842afcd33dd57beba70ef52b203a2c212984f94b213123518378491b4a"
         )
     )
-    async with store_type.create() as store:
+    async with store_type.create(root_path=root_path) as store:
         with pytest.raises(ValueError, match=f"Farmer not found for launcher ID {bytes32.zeros.hex()}"):
             await store.get_farmer(launcher_id=bytes32.zeros)
         await store.add_farmer(

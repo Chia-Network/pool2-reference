@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import pathlib
 import ssl
 from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import asynccontextmanager
@@ -8,14 +9,15 @@ from types import NoneType
 from typing import Any, get_type_hints
 
 from aiohttp import web
-from api.server import VersionString
+from api.server import CONFIG_FILE_NAME, Config, VersionString
 from api.service import Service
 from chia.protocols.pool_protocol import ErrorResponse, PoolErrorCode
 from chia.util.streamable import Streamable
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16
+from config_loading import canonical_load_config
 from farmer_rpc.api import APIEndpointMetadata, FarmerRPCError
-from server.config import Config, canonical_load_config
+from server.config import ConfigSchema
 from server.logging import setup_logging
 from typing_extensions import Self
 
@@ -80,9 +82,12 @@ class FarmerRPCServer:
         ],
         service: Service,
         token_sk: bytes32,
+        root_path: pathlib.Path,
     ) -> AsyncIterator[Self]:
         self = cls()
-        config = canonical_load_config()
+        config = canonical_load_config(
+            root_path=root_path, config_filename=CONFIG_FILE_NAME, schema_validation=ConfigSchema(), config_type=Config
+        )
         self.logger = logging.getLogger("farmer_rpc")
         setup_logging(self.logger, config["logging"])
         app = web.Application()

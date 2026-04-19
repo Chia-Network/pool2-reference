@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
-from api.node import GetRecentSignagePointOrEOSResponse
+from api.node_rpc import GetRecentSignagePointOrEOSResponse
 from api.service import Service as ServiceAPI
 from api.store import PartialMetadata
 from chia._tests.conftest import (  # noqa: PLC2701

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pathlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -63,7 +64,7 @@ class GetRewardClaimsResponse(TypedDict):
 class Store(Protocol):
     @classmethod
     @asynccontextmanager
-    async def create(cls) -> AsyncIterator[Self]:
+    async def create(cls, root_path: pathlib.Path) -> AsyncIterator[Self]:
         yield cls()
 
     async def add_farmer(
@@ -101,3 +102,10 @@ class Store(Protocol):
     async def get_unpaid_reward_claims(self) -> GetRewardClaimsResponse: ...
     async def add_payout(self, *, timestamp: uint64, payout_details: str) -> None: ...
     async def get_latest_payout(self) -> GetLatestPayoutResponse | None: ...
+
+
+class Config(TypedDict):
+    store_path: str
+
+
+CONFIG_FILE_NAME = "pool_store_config.yaml"

@@ -4,11 +4,11 @@ import pathlib
 from collections.abc import Iterator
 
 import pytest
+from api.wallet_rpc import CONFIG_FILE_NAME
 from chia._tests.environments.wallet import WalletTestFramework
 from click.testing import CliRunner
 from reference import cli
 from tests.config_creation import create_config
-from wallet.config import CONFIG_FILE_NAME
 
 
 @pytest.fixture

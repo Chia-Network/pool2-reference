@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pathlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Protocol
@@ -38,10 +39,10 @@ class GetPuzzleAndSolutionResponse(TypedDict):
 
 
 # Stubs
-class FullNode(Protocol):
+class NodeRPC(Protocol):
     @classmethod
     @asynccontextmanager
-    async def create(cls) -> AsyncIterator[Self]:
+    async def create(cls, root_path: pathlib.Path) -> AsyncIterator[Self]:
         yield cls()
 
     async def get_blockchain_state(self) -> GetBlockchainStateResponse: ...
@@ -52,3 +53,6 @@ class FullNode(Protocol):
     async def get_recent_signage_point(self, *, signage_point_hash: bytes32) -> GetRecentSignagePointOrEOSResponse: ...
     async def get_recent_end_of_subslot(self, *, challenge_hash: bytes32) -> GetRecentSignagePointOrEOSResponse: ...
     async def get_puzzle_and_solution(self, *, coin_id: bytes32, height: uint32) -> GetPuzzleAndSolutionResponse: ...
+
+
+CONFIG_FILE_NAME = "pool_node_client_config.yaml"

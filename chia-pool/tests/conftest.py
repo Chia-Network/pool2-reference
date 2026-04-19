@@ -41,6 +41,11 @@ async def wallet_envs(  # noqa: RUF029
 
 
 @pytest.fixture
+def root_path() -> pathlib.Path:
+    return pathlib.Path.cwd()
+
+
+@pytest.fixture
 def generate_ssl_cert() -> tuple[pathlib.Path, pathlib.Path]:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "localhost")])

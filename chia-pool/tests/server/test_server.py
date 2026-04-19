@@ -1,22 +1,22 @@
 from __future__ import annotations
 
 import asyncio
+import pathlib
 from dataclasses import dataclass
 from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
-from api.server import APIEndpointMetadata
+from api.server import APIEndpointMetadata, Config
 from api.service import Service
 from chia.util.streamable import Streamable, streamable
 from chia_rs.sized_bytes import bytes32
-from server.config import Config
 from server.farmer_rpc import FarmerRPCServer
 from server.pooling_tasks import PoolServer
 
 
 @pytest.mark.anyio
-async def test_server(server_config: None) -> None:
+async def test_server(server_config: None, root_path: pathlib.Path) -> None:
     service_mock = AsyncMock()
     call_count = 0
 
@@ -36,7 +36,7 @@ async def test_server(server_config: None) -> None:
         await asyncio.sleep(0)
 
     with patch("server.pooling_tasks.sleep", new=fake_sleep):
-        async with PoolServer.create_pool_tasks(service=service_mock):
+        async with PoolServer.create_pool_tasks(service=service_mock, root_path=root_path):
             for _ in range(NUMBER_OF_LOOPS):
                 await asyncio.sleep(0)
             assert call_count == NUMBER_OF_SERVICE_ENDPOINTS * NUMBER_OF_LOOPS
@@ -73,7 +73,7 @@ class V2EndpointResponse(Streamable):
 
 
 @pytest.mark.anyio
-async def test_rpc_server(server_config: None) -> None:
+async def test_rpc_server(server_config: None, root_path: pathlib.Path) -> None:
     async def v1_handler(  # noqa: RUF029
         request: V1EndpointRequest, service: Service, config: Config, token_sk: bytes32
     ) -> V1EndpointResponse:
@@ -107,6 +107,7 @@ async def test_rpc_server(server_config: None) -> None:
             handlers={"v1": {"test_endpoint": v1_handler}, "v2": {"test_endpoint": v2_handler}},
             service=AsyncMock(),
             token_sk=bytes32.zeros,
+            root_path=root_path,
         ) as farmer_rpc,
         aiohttp.ClientSession() as session,
     ):

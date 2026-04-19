@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import pathlib
 from typing import TYPE_CHECKING
 
 import pytest
-from api.node import FullNode
+from api.node_rpc import NodeRPC as NodeRPCStubs
 from chia._tests.environments.wallet import WalletTestFramework
 from chia.rpc.rpc_client import ResponseFailureError
 from chia.types.coin_spend import make_spend
@@ -13,7 +14,7 @@ from chia_rs.sized_ints import uint32
 from node.rpc_wrapper import NodeRPC
 
 if TYPE_CHECKING:
-    node: type[FullNode] = NodeRPC
+    node: type[NodeRPCStubs] = NodeRPC
 
 
 @pytest.mark.parametrize(
@@ -23,8 +24,8 @@ if TYPE_CHECKING:
 )
 @pytest.mark.anyio
 @pytest.mark.standard_block_tools
-async def test_rpc_wrapper(full_node_config: None, wallet_envs: WalletTestFramework) -> None:
-    async with NodeRPC.create() as rpc_client:
+async def test_rpc_wrapper(full_node_config: None, wallet_envs: WalletTestFramework, root_path: pathlib.Path) -> None:
+    async with NodeRPC.create(root_path=root_path) as rpc_client:
         # create ourselves some coins
         NUM_BLOCKS = 3
         REWARDS_PER_BLOCK = 2
