@@ -16,7 +16,8 @@ from chia.full_node.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.rpc_client import ResponseFailureError
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16, uint32, uint64
-from node.config import CONFIG_FILE_NAME, Config, load
+from chia_service_config import Config, load
+from node.config import CONFIG_FILE_NAME
 from typing_extensions import Self
 
 

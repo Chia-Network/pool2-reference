@@ -23,8 +23,9 @@ from chia.wallet.wallet_spend_bundle import WalletSpendBundle
 from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16, uint32, uint64
+from chia_service_config import Config, load
 from typing_extensions import Self
-from wallet.config import CONFIG_FILE_NAME, Config, load
+from wallet.config import CONFIG_FILE_NAME
 
 
 class WalletRPC:

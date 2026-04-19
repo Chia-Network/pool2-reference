@@ -2,18 +2,26 @@ from __future__ import annotations
 
 import asyncio
 import pathlib
+from collections.abc import Callable
+from typing import Literal
 
 import click
 import yaml
 from chia_rs.sized_bytes import bytes32
+from chia_service_config import Config as ChiaServiceConfig
+from chia_service_config import DaemonSSLConfig, NetConfig, PrivateSSLConfig
 from node.config import CONFIG_FILE_NAME as NODE_CONFIG_FILE
 from node.rpc_wrapper import NodeRPC
 from server.config import CONFIG_FILE_NAME as SERVER_CONFIG_FILE
+from server.config import Config as ServerConfig
+from server.config import LoggingConfig, PoolInfoConfig, WebConfig
 from server.farmer_rpc import FarmerRPCServer
 from server.pooling_tasks import PoolServer
 from service.config import CONFIG_FILE_NAME as SERVICE_CONFIG_FILE
+from service.config import PoolIdentityConfig, ServiceConfig
 from service.service import Service
 from store.config import CONFIG_FILE_NAME as STORE_CONFIG_FILE
+from store.config import Config as StoreConfig
 from store.sqlite import Store
 from wallet.config import CONFIG_FILE_NAME as WALLET_CONFIG_FILE
 from wallet.rpc_wrapper import WalletRPC
@@ -41,56 +49,164 @@ def start(auth_sk: str) -> None:
     asyncio.run(start_async(bytes32.from_hexstr(auth_sk)))
 
 
-@cli.command()
+@cli.group(short_help="Create config files")
+def config() -> None:
+    pass
+
+
+def create_config(
+    *, config_path: pathlib.Path, config_info: StoreConfig | ChiaServiceConfig | ServiceConfig | ServerConfig
+) -> None:
+    if not config_path.exists():
+        config_path.touch()
+    with config_path.open(mode="w", encoding="utf8") as file:
+        yaml.dump(config_info, file)
+
+
+root_path_option = click.option(
+    "--root-path",
+    type=click.Path(exists=True),
+    required=True,
+    help="The directory to create the config in",
+    default="~/.chia-pool",
+    show_default=True,
+)
+
+
+@config.command()
+@root_path_option
 @click.option("--store-path", type=click.Path(exists=False), required=True, help="The path to the store database file")
-@click.option(
-    "--full-node-hostname",
-    type=str,
-    required=True,
-    help="The hostname where the full node is running",
-    show_default=True,
-    default="127.0.0.1",
-)
-@click.option(
-    "--wallet-hostname",
-    type=str,
-    required=True,
-    help="The hostname where the wallet is running",
-    show_default=True,
-    default="127.0.0.1",
-)
-@click.option("--full-node-rpc-port", type=int, required=True, help="The port to use for the full node RPC server")
-@click.option("--wallet-rpc-port", type=int, required=True, help="The port to use for the wallet RPC server")
-@click.option("--chia-root", type=click.Path(exists=True), required=True, help="The path to the chia root directory")
-@click.option(
-    "--rpc-timeout", type=int, required=True, help="The RPC timeout in seconds", show_default=True, default=120
-)
-@click.option("--daemon-ssl-crt", type=click.Path(), required=True, help="The path to the daemon SSL certificate")
-@click.option("--daemon-ssl-key", type=click.Path(), required=True, help="The path to the daemon SSL key")
-@click.option(
-    "--full-node-private-ssl-crt",
-    type=click.Path(),
-    required=True,
-    help="The path to the Full Node private SSL CA certificate",
-)
-@click.option(
-    "--full-node-private-ssl-key",
-    type=click.Path(),
-    required=True,
-    help="The path to the Full Node private SSL CA key",
-)
-@click.option(
-    "--wallet-private-ssl-crt",
-    type=click.Path(),
-    required=True,
-    help="The path to the Wallet private SSL CA certificate",
-)
-@click.option(
-    "--wallet-private-ssl-key",
-    type=click.Path(),
-    required=True,
-    help="The path to the Wallet private SSL CA key",
-)
+def store(*, root_path: str, store_path: str) -> None:
+    create_config(
+        config_path=pathlib.Path(root_path).joinpath(STORE_CONFIG_FILE), config_info=StoreConfig(store_path=store_path)
+    )
+
+
+def chia_service_options(func: Callable[..., None]) -> Callable[..., None]:
+    return click.option(
+        "--hostname",
+        type=str,
+        required=True,
+        help="The hostname where the full node is running",
+        show_default=True,
+        default="127.0.0.1",
+    )(
+        click.option("--rpc-port", type=int, required=True, help="The port to use for the full node RPC server")(
+            click.option(
+                "--chia-root", type=click.Path(exists=True), required=True, help="The path to the chia root directory"
+            )(
+                click.option(
+                    "--rpc-timeout",
+                    type=int,
+                    required=True,
+                    help="The RPC timeout in seconds",
+                    show_default=True,
+                    default=120,
+                )(
+                    click.option(
+                        "--daemon-ssl-crt",
+                        type=click.Path(),
+                        required=True,
+                        help="The path to the daemon SSL certificate",
+                    )(
+                        click.option(
+                            "--daemon-ssl-key", type=click.Path(), required=True, help="The path to the daemon SSL key"
+                        )(
+                            click.option(
+                                "--private-ssl-crt",
+                                type=click.Path(),
+                                required=True,
+                                help="The path to the Full Node private SSL CA certificate",
+                            )(
+                                click.option(
+                                    "--private-ssl-key",
+                                    type=click.Path(),
+                                    required=True,
+                                    help="The path to the Full Node private SSL CA key",
+                                )(func)
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+
+@config.command()
+@root_path_option
+@chia_service_options
+def node(
+    *,
+    root_path: str,
+    hostname: str,
+    rpc_port: int,
+    chia_root: str,
+    rpc_timeout: int,
+    daemon_ssl_crt: str,
+    daemon_ssl_key: str,
+    private_ssl_crt: str,
+    private_ssl_key: str,
+) -> None:
+    create_config(
+        config_path=pathlib.Path(root_path).joinpath(NODE_CONFIG_FILE),
+        config_info=ChiaServiceConfig(
+            self_hostname=hostname,
+            rpc_port=rpc_port,
+            root_path=chia_root,
+            net_config=NetConfig(
+                rpc_timeout=rpc_timeout,
+                daemon_ssl=DaemonSSLConfig(
+                    private_crt=daemon_ssl_crt,
+                    private_key=daemon_ssl_key,
+                ),
+                private_ssl_ca=PrivateSSLConfig(
+                    crt=private_ssl_crt,
+                    key=private_ssl_key,
+                ),
+            ),
+        ),
+    )
+
+
+@config.command()
+@root_path_option
+@chia_service_options
+def wallet(
+    *,
+    root_path: str,
+    hostname: str,
+    rpc_port: int,
+    chia_root: str,
+    rpc_timeout: int,
+    daemon_ssl_crt: str,
+    daemon_ssl_key: str,
+    private_ssl_crt: str,
+    private_ssl_key: str,
+) -> None:
+    create_config(
+        config_path=pathlib.Path(root_path).joinpath(WALLET_CONFIG_FILE),
+        config_info=ChiaServiceConfig(
+            self_hostname=hostname,
+            rpc_port=rpc_port,
+            root_path=chia_root,
+            net_config=NetConfig(
+                rpc_timeout=rpc_timeout,
+                daemon_ssl=DaemonSSLConfig(
+                    private_crt=daemon_ssl_crt,
+                    private_key=daemon_ssl_key,
+                ),
+                private_ssl_ca=PrivateSSLConfig(
+                    crt=private_ssl_crt,
+                    key=private_ssl_key,
+                ),
+            ),
+        ),
+    )
+
+
+@config.command()
+@root_path_option
 @click.option(
     "--relative-lock-height",
     type=int,
@@ -154,28 +270,12 @@ def start(auth_sk: str) -> None:
     default=8455205,
 )
 @click.option(
-    "--collect-pool-rewards-interval",
-    type=int,
-    required=True,
-    help="The interval in seconds between collecting pool rewards",
-    show_default=True,
-    default=600,
-)
-@click.option(
     "--confirmation-security-threshold",
     type=int,
     required=True,
     help="The number of confirmations required for a block to be considered valid",
     show_default=True,
     default=2,
-)
-@click.option(
-    "--payment-interval",
-    type=int,
-    required=True,
-    help="The interval in seconds between distributing farmer payouts",
-    show_default=True,
-    default=3600 * 12,
 )
 @click.option(
     "--max-additions-per-transaction",
@@ -215,6 +315,49 @@ def start(auth_sk: str) -> None:
     required=True,
     help="The genesis challenge of the network this pool is running on",
 )
+def service(
+    *,
+    root_path: str,
+    relative_lock_height: int,
+    pool_wallet_address: str,
+    pool_memoization: str,
+    min_difficulty: int,
+    default_difficulty: int,
+    partial_time_limit: int,
+    partial_confirmation_delay: int,
+    scan_start_height: int,
+    confirmation_security_threshold: int,
+    max_additions_per_transaction: int,
+    number_of_partials_target: int,
+    time_target: int,
+    fee: int,
+    genesis_challenge: str,
+) -> None:
+    create_config(
+        config_path=pathlib.Path(root_path).joinpath(SERVICE_CONFIG_FILE),
+        config_info=ServiceConfig(
+            pool_identity=PoolIdentityConfig(
+                relative_lock_height=relative_lock_height,
+                pool_claim_hash=pool_wallet_address,
+                pool_memoization=pool_memoization,
+            ),
+            min_difficulty=min_difficulty,
+            default_difficulty=default_difficulty,
+            partial_time_limit=partial_time_limit,
+            partial_confirmation_delay=partial_confirmation_delay,
+            scan_start_height=scan_start_height,
+            confirmation_security_threshold=confirmation_security_threshold,
+            max_additions_per_transaction=max_additions_per_transaction,
+            number_of_partials_target=number_of_partials_target,
+            time_target=time_target,
+            fee_basis_points=fee,
+            genesis_challenge=genesis_challenge,
+        ),
+    )
+
+
+@config.command()
+@root_path_option
 @click.option(
     "--log-level",
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
@@ -368,38 +511,10 @@ def start(auth_sk: str) -> None:
     show_default=True,
     default=0,
 )
-def generate_config(
+def server(
     *,
-    store_path: str,
-    full_node_hostname: str,
-    wallet_hostname: str,
-    full_node_rpc_port: int,
-    wallet_rpc_port: int,
-    chia_root: str,
-    rpc_timeout: int,
-    daemon_ssl_crt: str,
-    daemon_ssl_key: str,
-    full_node_private_ssl_crt: str,
-    full_node_private_ssl_key: str,
-    wallet_private_ssl_crt: str,
-    wallet_private_ssl_key: str,
-    relative_lock_height: int,
-    pool_wallet_address: str,
-    pool_memoization: str,
-    min_difficulty: int,
-    default_difficulty: int,
-    partial_time_limit: int,
-    partial_confirmation_delay: int,
-    scan_start_height: int,
-    collect_pool_rewards_interval: int,
-    confirmation_security_threshold: int,
-    payment_interval: int,
-    max_additions_per_transaction: int,
-    number_of_partials_target: int,
-    time_target: int,
-    fee: int,
-    genesis_challenge: str,
-    log_level: str,
+    root_path: str,
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"],
     log_stdout: bool,
     log_syslog: bool,
     log_syslog_host: str,
@@ -420,120 +535,37 @@ def generate_config(
     service_loop_intervals: int,
     authentication_token_timeout: int,
 ) -> None:
-    """Generate all configuration files."""
-    server_config_path = pathlib.Path.cwd().joinpath(SERVER_CONFIG_FILE)
-    service_config_path = pathlib.Path.cwd().joinpath(SERVICE_CONFIG_FILE)
-    node_config_path = pathlib.Path.cwd().joinpath(NODE_CONFIG_FILE)
-    wallet_config_path = pathlib.Path.cwd().joinpath(WALLET_CONFIG_FILE)
-    store_config_path = pathlib.Path.cwd().joinpath(STORE_CONFIG_FILE)
-    if not store_config_path.exists():
-        store_config_path.touch()
-    if not service_config_path.exists():
-        service_config_path.touch()
-    if not node_config_path.exists():
-        node_config_path.touch()
-    if not wallet_config_path.exists():
-        wallet_config_path.touch()
-    if not server_config_path.exists():
-        server_config_path.touch()
-    with store_config_path.open(mode="w") as file:
-        yaml.dump({"store_path": store_path}, file)
-    with node_config_path.open(mode="w") as file:
-        yaml.dump(
-            {
-                "self_hostname": full_node_hostname,
-                "rpc_port": full_node_rpc_port,
-                "root_path": chia_root,
-                "net_config": {
-                    "rpc_timeout": rpc_timeout,
-                    "daemon_ssl": {
-                        "private_crt": daemon_ssl_crt,
-                        "private_key": daemon_ssl_key,
-                    },
-                    "private_ssl_ca": {
-                        "crt": full_node_private_ssl_crt,
-                        "key": full_node_private_ssl_key,
-                    },
-                },
-            },
-            file,
-        )
-    with wallet_config_path.open(mode="w") as file:
-        yaml.dump(
-            {
-                "self_hostname": wallet_hostname,
-                "rpc_port": wallet_rpc_port,
-                "root_path": chia_root,
-                "net_config": {
-                    "rpc_timeout": rpc_timeout,
-                    "daemon_ssl": {
-                        "private_crt": daemon_ssl_crt,
-                        "private_key": daemon_ssl_key,
-                    },
-                    "private_ssl_ca": {
-                        "crt": wallet_private_ssl_crt,
-                        "key": wallet_private_ssl_key,
-                    },
-                },
-            },
-            file,
-        )
-    with service_config_path.open(mode="w") as file:
-        yaml.dump(
-            {
-                "pool_identity": {
-                    "relative_lock_height": relative_lock_height,
-                    "pool_claim_hash": pool_wallet_address,
-                    "pool_memoization": pool_memoization,
-                },
-                "min_difficulty": min_difficulty,
-                "default_difficulty": default_difficulty,
-                "partial_time_limit": partial_time_limit,
-                "partial_confirmation_delay": partial_confirmation_delay,
-                "scan_start_height": scan_start_height,
-                "collect_pool_rewards_interval": collect_pool_rewards_interval,
-                "confirmation_security_threshold": confirmation_security_threshold,
-                "payment_interval": payment_interval,
-                "max_additions_per_transaction": max_additions_per_transaction,
-                "number_of_partials_target": number_of_partials_target,
-                "time_target": time_target,
-                "fee_basis_points": fee,
-                "genesis_challenge": genesis_challenge,
-            },
-            file,
-        )
-    with server_config_path.open(mode="w") as file:
-        yaml.dump(
-            {
-                "logging": {
-                    "log_level": log_level,
-                    "log_stdout": log_stdout,
-                    "log_syslog": log_syslog,
-                    "log_syslog_host": log_syslog_host,
-                    "log_syslog_port": log_syslog_port,
-                    "log_filename": log_filename,
-                    "log_maxfilesrotation": log_maxfilesrotation,
-                    "log_max_bytes_rotation": log_max_bytes_rotation,
-                    "log_use_gzip": log_use_gzip,
-                },
-                "pool_info": {
-                    "name": pool_name,
-                    "logo_url": pool_logo_url,
-                    "description": pool_description,
-                    "welcome_message": pool_welcome_message,
-                    "minimum_difficulty": pool_minimum_difficulty,
-                },
-                "web_config": {
-                    "host": web_host,
-                    "port": web_port,
-                    "ssl_cert_path": ssl_cert_path,
-                    "ssl_key_path": ssl_key_path,
-                },
-                "service_loop_intervals": service_loop_intervals,
-                "authentication_token_timeout": authentication_token_timeout,
-            },
-            file,
-        )
+    create_config(
+        config_path=pathlib.Path(root_path).joinpath(SERVER_CONFIG_FILE),
+        config_info=ServerConfig(
+            logging=LoggingConfig(
+                log_level=log_level,
+                log_stdout=log_stdout,
+                log_syslog=log_syslog,
+                log_syslog_host=log_syslog_host,
+                log_syslog_port=log_syslog_port,
+                log_filename=log_filename,
+                log_maxfilesrotation=log_maxfilesrotation,
+                log_max_bytes_rotation=log_max_bytes_rotation,
+                log_use_gzip=log_use_gzip,
+            ),
+            pool_info=PoolInfoConfig(
+                name=pool_name,
+                logo_url=pool_logo_url,
+                description=pool_description,
+                welcome_message=pool_welcome_message,
+                minimum_difficulty=pool_minimum_difficulty,
+            ),
+            web_config=WebConfig(
+                host=web_host,
+                port=web_port,
+                ssl_cert_path=ssl_cert_path,
+                ssl_key_path=ssl_key_path,
+            ),
+            service_loop_intervals=service_loop_intervals,
+            authentication_token_timeout=authentication_token_timeout,
+        ),
+    )
 
 
 if __name__ == "__main__":

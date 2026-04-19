@@ -6,11 +6,9 @@ from contextlib import contextmanager
 
 
 @contextmanager
-def create_config(filename: str) -> Iterator[pathlib.Path]:
-    config_path = pathlib.Path.cwd().joinpath(filename)
+def create_config(filename: str) -> Iterator[None]:
     try:
-        config_path.touch()
-        yield config_path
+        yield None
     finally:
-        if config_path.exists():
-            config_path.unlink()
+        if pathlib.Path.cwd().joinpath(filename).exists():
+            pathlib.Path.cwd().joinpath(filename).unlink()

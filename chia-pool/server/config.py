@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from chia_rs.sized_ints import uint8, uint16, uint64
 from marshmallow import Schema, ValidationError, fields, validates
 from typing_extensions import TypedDict
 
@@ -55,10 +54,10 @@ class LoggingConfig(TypedDict):
     log_stdout: bool
     log_syslog: bool
     log_syslog_host: str
-    log_syslog_port: uint16
+    log_syslog_port: int
     log_filename: str
-    log_maxfilesrotation: uint8
-    log_max_bytes_rotation: uint64
+    log_maxfilesrotation: int
+    log_max_bytes_rotation: int
     log_use_gzip: bool
 
 
@@ -67,7 +66,7 @@ class PoolInfoConfig(TypedDict):
     logo_url: str
     description: str
     welcome_message: str
-    minimum_difficulty: uint64
+    minimum_difficulty: int
 
 
 class WebConfig(TypedDict):
@@ -80,9 +79,9 @@ class WebConfig(TypedDict):
 class Config(TypedDict):
     logging: LoggingConfig
     pool_info: PoolInfoConfig
-    service_loop_intervals: uint8
+    service_loop_intervals: int
     web_config: WebConfig
-    authentication_token_timeout: uint8
+    authentication_token_timeout: int
 
 
 def load(data: Config) -> Config:

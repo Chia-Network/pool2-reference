@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import pathlib
 from collections.abc import AsyncIterator
 from unittest.mock import PropertyMock, patch
 
 import pytest
-import yaml
 from api.service import Service as ServiceAPI
 from chia._tests.environments.wallet import WalletTestFramework
 from chia_rs.sized_ints import uint64
+from click.testing import CliRunner
 from node.rpc_wrapper import NodeRPC
+from reference import cli
 from service.config import CONFIG_FILE_NAME
 from service.service import Service
 from store.sqlite import Store
@@ -21,28 +23,46 @@ async def service_config(wallet_envs: WalletTestFramework) -> AsyncIterator[None
     env = wallet_envs.environments[0]
     async with env.wallet_state_manager.new_action_scope(tx_config=wallet_envs.tx_config, push=True) as action_scope:
         puzzle_hash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
-    with create_config(CONFIG_FILE_NAME) as config_path, config_path.open(mode="w", encoding="utf8") as file:
-        yaml.dump(
-            {
-                "pool_identity": {
-                    "relative_lock_height": 5,
-                    "pool_claim_hash": puzzle_hash.hex(),
-                    "pool_memoization": "80",
-                },
-                "min_difficulty": 0,
-                "default_difficulty": 0,
-                "partial_time_limit": 60,
-                "partial_confirmation_delay": 600,  # 10 minutes
-                "scan_start_height": 0,
-                "confirmation_security_threshold": 0,
-                "max_additions_per_transaction": 100,
-                "number_of_partials_target": 2,
-                "time_target": 2,
-                "fee_basis_points": 1000,  # 10%
-                "genesis_challenge": env.node.constants.GENESIS_CHALLENGE.hex(),
-            },
-            file,
+    with create_config(CONFIG_FILE_NAME):
+        result = CliRunner().invoke(
+            cli,
+            [
+                "config",
+                "service",
+                "--root-path",
+                str(pathlib.Path.cwd()),
+                "--relative-lock-height",
+                "5",
+                "--pool-wallet-address",
+                puzzle_hash.hex(),
+                "--pool-memoization",
+                "80",
+                "--min-difficulty",
+                "0",
+                "--default-difficulty",
+                "0",
+                "--partial-time-limit",
+                "60",
+                "--partial-confirmation-delay",
+                "600",
+                "--scan-start-height",
+                "0",
+                "--confirmation-security-threshold",
+                "0",
+                "--max-additions-per-transaction",
+                "100",
+                "--number-of-partials-target",
+                "2",
+                "--time-target",
+                "2",
+                "--fee",
+                "1000",
+                "--genesis-challenge",
+                env.node.constants.GENESIS_CHALLENGE.hex(),
+            ],
+            catch_exceptions=False,
         )
+        assert result.exit_code == 0, result.output
         yield None
 
 
