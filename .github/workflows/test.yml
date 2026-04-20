@@ -32,18 +32,23 @@ jobs:
           - name: "Ubuntu Intel"
             runs-on: ubuntu-latest
             platform: "ubuntu"
+            pytest-threads: 2
           - name: "Ubuntu Arm"
             runs-on: ubuntu-24.04-arm
             platform: "ubuntu"
+            pytest-threads: 2
           - name: "MacOS Intel"
             runs-on: "macos-15-intel"
             platform: "macos"
+            pytest-threads: 4
           - name: "MacOS M1"
             runs-on: "macos-15"
             platform: "macos"
+            pytest-threads: 4
           - name: "Windows"
             runs-on: windows-latest
             platform: "windows"
+            pytest-threads: 4
         python:
           - version: "3.10"
           - version: "3.11"
@@ -153,4 +158,4 @@ jobs:
 
       - name: Test code with pytest
         run: |
-          pytest . -n 4
+          pytest . -n ${{ matrix.os.python-threads }}
