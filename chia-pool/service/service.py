@@ -78,7 +78,7 @@ class Service:
                 ):
                     await self.store.delete_partial(launcher_id=launcher_id, timestamp=partial.timestamp)
 
-            await self.store.confirm_partials(launcher_id=launcher_id, until_timestamp=uint64(target_timestamp - 1))
+            await self.store.confirm_partials(launcher_id=launcher_id, until_timestamp=target_timestamp)
 
     async def check_for_singletons(self) -> None:
         """
