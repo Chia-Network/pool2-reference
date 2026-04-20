@@ -254,6 +254,7 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
         ]
     )
     await service.submit_payments()
+    assert (await service.store.get_unpaid_reward_claims())["claims"] == []
     BASIS = 10_000
     reward_total_minus_fee = int(total_pooling_reward_amount * (1 - service.config["fee_basis_points"] / BASIS))
     await wallet_envs.process_pending_states(

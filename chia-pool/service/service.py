@@ -219,9 +219,9 @@ class Service:
                 ]
 
         BASIS = 10000
+        reward_claims = await self.store.get_unpaid_reward_claims()
         reward_total = int(
-            sum(claim["amount"] for claim in (await self.store.get_unpaid_reward_claims())["claims"])
-            * (1 - self.config["fee_basis_points"] / BASIS)
+            sum(claim["amount"] for claim in reward_claims["claims"]) * (1 - self.config["fee_basis_points"] / BASIS)
         )
         total_points = sum(user_difficulty_points.values())
 
@@ -244,7 +244,7 @@ class Service:
             payout_batch = {
                 user: payouts[user]
                 for user in list(payouts.keys())[
-                    i : max(i + self.config["max_additions_per_transaction"], len(payouts))
+                    i : min(i + self.config["max_additions_per_transaction"], len(payouts))
                 ]
             }
             if len(payout_batch) > 0:
@@ -262,4 +262,7 @@ class Service:
                 await self.store.add_payout(
                     timestamp=timestamp,
                     payout_details="",  # TODO: delete this?
+                )
+                await self.store.set_claims_statuses(
+                    timestamps=[claim["timestamp"] for claim in reward_claims["claims"]]
                 )

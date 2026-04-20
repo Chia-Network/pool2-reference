@@ -30,12 +30,14 @@ async def get_auth(
     In order to prove that the farmer is who they claim to be, the farmer must sign a message with the key that controls
     exiting from the pool.
     """
-    farmer_record = await service.store.get_farmer(launcher_id=request.payload.launcher_id)
-    if farmer_record is None:
+
+    try:
+        farmer_record = await service.store.get_farmer(launcher_id=request.payload.launcher_id)
+    except Exception as err:
         raise FarmerRPCError(
             code=pool_protocol.PoolErrorCode.FARMER_NOT_KNOWN,
             message=f"Farmer with launcher_id {request.payload.launcher_id.hex()} unknown.",
-        )
+        ) from err
 
     message = (
         bytes(request.payload.timestamp)
@@ -79,12 +81,14 @@ async def get_farmer(
             message=f"Invalid authentication token for launcher_id {request.launcher_id.hex()}.",
         )
 
-    farmer_record = await service.store.get_farmer(launcher_id=request.launcher_id)
-    if not farmer_record:
+    try:
+        farmer_record = await service.store.get_farmer(launcher_id=request.launcher_id)
+    except Exception as err:
         raise FarmerRPCError(
-            code=pool_protocol.PoolErrorCode.NOT_FOUND,
+            code=pool_protocol.PoolErrorCode.FARMER_NOT_KNOWN,
             message=f"Farmer with launcher_id {request.launcher_id.hex()} not found.",
-        )
+        ) from err
+
     return pool_protocol.GetFarmerResponse(
         authentication_public_key=farmer_record["authentication_public_key"],
         payout_instructions=farmer_record["payout_instructions"],
@@ -283,7 +287,7 @@ async def check_partial(
         launcher_id=launcher_id,
         partial=PartialMetadata(
             timestamp=current_time,
-            difficulty=required_iters,
+            difficulty=farmer_record["difficulty"],
             challenge_hash=partial.sp_hash,
             pos_hash=partial.proof_of_space.get_hash(),
             end_of_sub_slot=partial.end_of_sub_slot,

@@ -22,7 +22,6 @@ def gzip_namer(name: str) -> str:
 def setup_logging(root: logging.Logger, log_config: LoggingConfig) -> None:
     level = getattr(logging, log_config["log_level"])
     formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
     root.setLevel(level)
     root.handlers.clear()
