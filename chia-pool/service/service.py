@@ -263,6 +263,4 @@ class Service:
                     timestamp=timestamp,
                     payout_details="",  # TODO: delete this?
                 )
-                await self.store.set_claims_statuses(
-                    timestamps=[claim["timestamp"] for claim in reward_claims["claims"]]
-                )
+        await self.store.set_claims_statuses(timestamps=[claim["timestamp"] for claim in reward_claims["claims"]])
