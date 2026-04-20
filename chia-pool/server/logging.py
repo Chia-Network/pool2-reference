@@ -10,7 +10,7 @@ from api.server import LoggingConfig
 
 
 def gzip_rotator(source: str, dest: str) -> None:
-    with pathlib.Path(source).open("rb") as f_in, gzip.open(f"{dest}.gz", "wb") as f_out:
+    with pathlib.Path(source).open("rb") as f_in, gzip.open(dest, "wb") as f_out:
         shutil.copyfileobj(f_in, f_out)
     pathlib.Path(source).unlink()
 

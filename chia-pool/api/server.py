@@ -9,6 +9,7 @@ from api.service import Service
 from chia.util.streamable import Streamable
 from chia_rs.sized_bytes import bytes32
 from farmer_rpc.api import APIEndpointMetadata
+from typing_extensions import Self
 
 VersionString = str
 
@@ -26,10 +27,14 @@ class RPCServer(Protocol):
         self,
         *,
         farmer_rpcs: dict[VersionString, list[APIEndpointMetadata]],
-        handlers: dict[VersionString, dict[str, Callable[[Streamable | None], Coroutine[Any, Any, Streamable | None]]]],
+        handlers: dict[
+            VersionString,
+            dict[str, Callable[[Streamable | None, Service, Config, bytes32], Coroutine[Any, Any, Streamable | None]]],
+        ],
+        service: Service,
         token_sk: bytes32,
         root_path: pathlib.Path,
-    ) -> AsyncIterator[None]:
+    ) -> AsyncIterator[Self]:
         yield None
 
 

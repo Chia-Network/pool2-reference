@@ -9,6 +9,7 @@ import api
 import click
 import yaml
 from chia_rs.sized_bytes import bytes32
+from farmer_rpc import v2
 from node.rpc_wrapper import NodeRPC
 from server.farmer_rpc import FarmerRPCServer
 from server.pooling_tasks import PoolServer
@@ -30,9 +31,13 @@ async def start_async(*, auth_sk: bytes32, root_path: pathlib.Path) -> None:
     ):
         service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc, root_path=root_path)
         async with (
-            PoolServer.create_pool_tasks(service=service, root_path=root_path),
+            PoolServer.create_pooling_tasks(service=service, root_path=root_path),
             FarmerRPCServer.create_rpc(
-                farmer_rpcs={}, handlers={}, service=service, token_sk=auth_sk, root_path=root_path
+                farmer_rpcs={"v2": v2.METADATA},
+                handlers={"v2": v2.HANDLERS},
+                service=service,
+                token_sk=auth_sk,
+                root_path=root_path,
             ),
         ):
             await asyncio.Event().wait()

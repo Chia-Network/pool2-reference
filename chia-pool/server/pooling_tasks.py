@@ -40,7 +40,7 @@ class PoolServer:
 
     @classmethod
     @asynccontextmanager
-    async def create_pool_tasks(
+    async def create_pooling_tasks(
         cls,
         *,
         service: Service,

@@ -3,16 +3,21 @@ from __future__ import annotations
 import asyncio
 import pathlib
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
-from api.server import APIEndpointMetadata, Config
+from api.server import APIEndpointMetadata, Config, RPCServer, TaskServer
 from api.service import Service
 from chia.util.streamable import Streamable, streamable
 from chia_rs.sized_bytes import bytes32
 from server.farmer_rpc import FarmerRPCServer
 from server.pooling_tasks import PoolServer
+
+if TYPE_CHECKING:
+    task_server: type[TaskServer] = PoolServer
+    rpc_server: type[RPCServer] = FarmerRPCServer
 
 
 @pytest.mark.anyio
@@ -36,7 +41,7 @@ async def test_server(server_config: None, root_path: pathlib.Path) -> None:
         await asyncio.sleep(0)
 
     with patch("server.pooling_tasks.sleep", new=fake_sleep):
-        async with PoolServer.create_pool_tasks(service=service_mock, root_path=root_path):
+        async with PoolServer.create_pooling_tasks(service=service_mock, root_path=root_path):
             for _ in range(NUMBER_OF_LOOPS):
                 await asyncio.sleep(0)
             assert call_count == NUMBER_OF_SERVICE_ENDPOINTS * NUMBER_OF_LOOPS
