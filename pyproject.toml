@@ -25,10 +25,10 @@ priority = "supplemental"
 source = "https://github.com/Chia-Network/chia-pool/"
 
 [tool.poetry.dependencies]
-chia-blockchain = { git = "https://github.com/Chia-Network/chia-blockchain.git", rev = "40777879061cfc7223c21584bc4b8a1cd6752236" }
+chia-blockchain = { git = "https://github.com/Chia-Network/chia-blockchain.git", rev = "e19733c9640e05fd09744c2711aed20f418b11fc" }
 aiohttp = { version = ">=3.13.3,<4.0.0" }
 aiosqlite = { version = ">=0.22.1,<0.23.0" }
-chia-rs = { version = "0.41.1" }
+chia-rs = { version = "0.42.0" }
 pyjwt = { version = ">=2.10.1,<3.0.0" }
 marshmallow = { version = ">=4.2.1,<5.0.0" }
 click = { version = ">=8.3.1,<9.0.0"}
