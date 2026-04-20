@@ -71,11 +71,6 @@ class Store:
 
             yield store
 
-    def _next_savepoint(self) -> str:
-        name = f"s{self._savepoint_name}"
-        self._savepoint_name += 1
-        return name
-
     async def add_farmer(
         self,
         *,
@@ -250,6 +245,8 @@ class Store:
             )
 
     async def set_claims_statuses(self, *, timestamps: list[uint64]) -> None:
+        if len(timestamps) == 0:
+            return
         async with self.db_wrapper.writer_maybe_transaction() as conn:
             await conn.execute(
                 f"UPDATE claims SET confirmed = TRUE WHERE timestamp IN ({','.join(['?'] * len(timestamps))})",  # noqa: S608

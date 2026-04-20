@@ -259,8 +259,8 @@ class Service:
                     ],
                     fee=uint64(0),
                 )
-                await self.store.add_payout(
-                    timestamp=timestamp,
-                    payout_details="",  # TODO: delete this?
-                )
+        await self.store.add_payout(
+            timestamp=timestamp,
+            payout_details="",  # TODO: delete this?
+        )
         await self.store.set_claims_statuses(timestamps=[claim["timestamp"] for claim in reward_claims["claims"]])
