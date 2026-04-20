@@ -294,7 +294,7 @@ def wallet(
     "--number-of-partials-target",
     type=int,
     required=True,
-    help="Don't actually know what this is",
+    help="The number of partials per --time-target interval a farmer should be submitting",
     show_default=True,
     default=0,
 )
@@ -302,7 +302,7 @@ def wallet(
     "--time-target",
     type=int,
     required=True,
-    help="Nor this",
+    help="The interval over which a farmer should submit --number-of-partials-target partials",
     show_default=True,
     default=0,
 )
