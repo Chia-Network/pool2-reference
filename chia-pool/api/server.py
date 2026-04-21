@@ -22,9 +22,10 @@ class TaskServer(Protocol):
 
 
 class RPCServer(Protocol):
+    @classmethod
     @asynccontextmanager
     async def create_rpc(
-        self,
+        cls,
         *,
         farmer_rpcs: dict[VersionString, list[APIEndpointMetadata]],
         handlers: dict[
@@ -35,7 +36,7 @@ class RPCServer(Protocol):
         token_sk: bytes32,
         root_path: pathlib.Path,
     ) -> AsyncIterator[Self]:
-        yield None
+        yield cls()
 
 
 CONFIG_FILE_NAME = "pool_server_config.yaml"
