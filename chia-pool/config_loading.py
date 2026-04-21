@@ -14,5 +14,4 @@ def canonical_load_config(
 ) -> _T_Config:
     with root_path.joinpath(config_filename).open(mode="r") as file:
         config_data = yaml.safe_load(file)
-        schema_validation.load(config_data)
-        return config_data
+        return schema_validation.load(config_data)  # type: ignore[return-type]

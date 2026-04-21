@@ -304,7 +304,7 @@ def wallet(
     required=True,
     help="The interval over which a farmer should submit --number-of-partials-target partials",
     show_default=True,
-    default=0,
+    default=3600,
 )
 @click.option(
     "--fee",
