@@ -158,4 +158,4 @@ jobs:
 
       - name: Test code with pytest
         run: |
-          pytest . -n ${{ matrix.os.python-threads }}
+          pytest . -n ${{ matrix.os.pytest-threads }}
