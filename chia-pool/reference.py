@@ -43,9 +43,19 @@ async def start_async(*, auth_sk: bytes32, root_path: pathlib.Path) -> None:
             await asyncio.Event().wait()
 
 
+root_path_option = click.option(
+    "--root-path",
+    type=pathlib.Path,
+    required=True,
+    default="~/.chia-pool",
+    show_default=True,
+    help="The root path for the config files",
+)
+
+
 @cli.command()
 @click.option("--auth-sk", type=str, required=True, help="The 32-byte secret key to use for farmer authentication")
-@click.option("--root-path", type=pathlib.Path, required=True, help="The root path for the config files")
+@root_path_option
 def start(auth_sk: str, root_path: pathlib.Path) -> None:
     """Start the application."""
     asyncio.run(start_async(auth_sk=bytes32.from_hexstr(auth_sk), root_path=root_path))
@@ -65,16 +75,6 @@ def create_config(
         config_path.touch()
     with config_path.open(mode="w", encoding="utf8") as file:
         yaml.dump(config_info, file)
-
-
-root_path_option = click.option(
-    "--root-path",
-    type=click.Path(exists=True),
-    required=True,
-    help="The directory to create the config in",
-    default="~/.chia-pool",
-    show_default=True,
-)
 
 
 @config.command()
