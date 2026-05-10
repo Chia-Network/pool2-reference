@@ -15,15 +15,15 @@ files = [
 
 [[package]]
 name = "click"
-version = "8.3.1"
+version = "8.3.3"
 description = "Composable command line interface toolkit"
 optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 markers = "extra == \"dev\""
 files = [
-    {file = "click-8.3.1-py3-none-any.whl", hash = "sha256:981153a64e25f12d547d3426c367a4857371575ee7ad18df2a6183ab0545b2a6"},
-    {file = "click-8.3.1.tar.gz", hash = "sha256:12ff4785d337a1bb490bb7e9c2b1ee5da3112e94a8622f26a6c77f5d2fc6842a"},
+    {file = "click-8.3.3-py3-none-any.whl", hash = "sha256:a2bf429bb3033c89fa4936ffb35d5cb471e3719e1f3c8a7c3fff0b8314305613"},
+    {file = "click-8.3.3.tar.gz", hash = "sha256:398329ad4837b2ff7cbe1dd166a4c0f8900c3ca3a218de04466f38f6497f18a2"},
 ]
 
 [package.dependencies]
@@ -634,4 +634,4 @@ dev = ["click", "mypy", "pre-commit", "pytest", "ruff"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <4"
-content-hash = "abc2035150064b81b313c509bd38dc466a20a7f6d98aa78aac28f7ce385bfde1"
+content-hash = "bba23942e7b0cb5698d6186616f7e5dbcdbc1088770a20c1bd4bac33e0903403"
