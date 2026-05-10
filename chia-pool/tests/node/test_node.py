@@ -38,6 +38,9 @@ async def test_rpc_wrapper(full_node_config: None, wallet_envs: WalletTestFramew
         )
         await wallet_envs.full_node.farm_blocks_to_puzzlehash(count=1, guarantee_transaction_blocks=True, timeout=100)
         await wallet_envs.full_node.wait_for_self_synced()
+        # check the constants
+        constants = await rpc_client.get_constants()
+        assert constants["constants"] == wallet_envs.full_node.full_node.constants
         # check the blockchain state
         state = await rpc_client.get_blockchain_state()
         assert state["peak"] == NUM_BLOCKS

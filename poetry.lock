@@ -674,8 +674,8 @@ upnp = ["miniupnpc"]
 [package.source]
 type = "git"
 url = "https://github.com/Chia-Network/chia-blockchain.git"
-reference = "e19733c9640e05fd09744c2711aed20f418b11fc"
-resolved_reference = "e19733c9640e05fd09744c2711aed20f418b11fc"
+reference = "918d7119612f3812e9947681294815f7371f2e5e"
+resolved_reference = "918d7119612f3812e9947681294815f7371f2e5e"
 
 [[package]]
 name = "chia-puzzles-py"
@@ -3251,4 +3251,4 @@ dev = ["mypy", "pre-commit", "pytest", "pytest-xdist", "ruff"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <4"
-content-hash = "46574758dca7c824af035dc8d848e8c3e2ee29c1776c33fb395607b387fde940"
+content-hash = "94cec8a79eff317d5c355542d28151247ec709b60290bd6604aa2244a7680a60"

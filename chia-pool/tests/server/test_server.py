@@ -98,6 +98,7 @@ async def test_rpc_server(server_config: None, root_path: pathlib.Path) -> None:
                         request_type="GET",
                         request=V1EndpointRequest,
                         response=V1EndpointResponse,
+                        handler=v1_handler,
                     )
                 ],
                 "v2": [
@@ -106,10 +107,10 @@ async def test_rpc_server(server_config: None, root_path: pathlib.Path) -> None:
                         request_type="GET",
                         request=V2EndpointRequest,
                         response=V2EndpointResponse,
+                        handler=v2_handler,
                     )
                 ],
             },
-            handlers={"v1": {"test_endpoint": v1_handler}, "v2": {"test_endpoint": v2_handler}},
             service=AsyncMock(),
             token_sk=bytes32.zeros,
             root_path=root_path,

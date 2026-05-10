@@ -10,7 +10,6 @@ from api.store import PartialMetadata, Store
 from api.wallet_rpc import Payment, Wallet
 from chia.pools.plotnft_drivers import PlotNFT, PlotNFTPuzzle, PoolConfig, PoolReward, RewardPuzzle, UserConfig
 from chia.types.blockchain_format.program import Program
-from chia.util.bech32m import decode_puzzle_hash
 from chia_rs import G2Element, SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32, uint64
@@ -34,7 +33,7 @@ async def confirm_partial(
 
 def convert_payout_instructions(payout_instructions: str) -> bytes32:
     # TODO: hook for more of these?
-    return decode_puzzle_hash(payout_instructions)
+    return bytes32.from_hexstr(payout_instructions)
 
 
 class Service:
@@ -109,7 +108,22 @@ class Service:
             if len(plotnfts_response["coin_records"]) > 1:
                 raise ValueError("Multiple plot NFTs found")
             if len(plotnfts_response["coin_records"]) == 0:
-                raise ValueError("No plot NFT found")  # TODO: delete farmer?
+                latest_payout = await self.store.get_latest_payout()
+                confirmed_partials = await self.store.get_partials(
+                    launcher_id=launcher_id,
+                    confirmed=True,
+                    since=latest_payout["timestamp"] if latest_payout is not None else uint64(0),
+                )
+                unconfirmed_partials = await self.store.get_partials(
+                    launcher_id=launcher_id,
+                    confirmed=False,
+                    since=latest_payout["timestamp"] if latest_payout is not None else uint64(0),
+                )
+                if len(confirmed_partials["partials"]) + len(unconfirmed_partials["partials"]) == 0:
+                    await self.store.delete_farmer(launcher_id=launcher_id)
+                    await self.store.delete_singleton(launcher_id=launcher_id)
+                    await self.store.delete_all_partials(launcher_id=launcher_id)
+                continue
             plotnft_coin = plotnfts_response["coin_records"][0]
             if plotnft_coin.confirmed_block_index > peak_height - self.config["confirmation_security_threshold"]:
                 continue
@@ -134,6 +148,14 @@ class Service:
         The purpose of this task is to forward to the pool any pool rewards that farmers have successfully farmed.
         """
         # TODO: v1
+        response = await self.store.is_pending_reward_claim()
+        if response["pending"]:
+            assert response["tx_id"] is not None
+            tx_status = await self.wallet.get_transaction_status(tx_id=response["tx_id"])
+            if tx_status["confirmed"]:
+                await self.store.confirm_claim_tx(tx_id=response["tx_id"])
+            return
+
         peak_height = (await self.full_node.get_blockchain_state())["peak"]
         launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
         launcher_id_to_reward_hash: dict[bytes32, bytes32] = {}
@@ -165,9 +187,20 @@ class Service:
                     coin_id=plotnft_parent_record.coin.name(), height=plotnft_parent_record.spent_block_index
                 )
             )["spend"]
+            farmer_record = await self.store.get_farmer(launcher_id=launcher_id)
             plotnft = PlotNFT.get_next_from_coin_spend(
                 coin_spend=last_spend,
-                genesis_challenge=bytes32.from_hexstr(self.config["genesis_challenge"]),
+                previous_plotnft_puzzle=PlotNFTPuzzle(
+                    launcher_id=launcher_id,
+                    genesis_challenge=bytes32.from_hexstr(self.config["genesis_challenge"]),
+                    user_config=UserConfig(synthetic_pubkey=farmer_record["authentication_public_key"]),
+                    pool_config=PoolConfig(
+                        pool_puzzle_hash=bytes32.from_hexstr(self.config["pool_identity"]["pool_claim_hash"]),
+                        heightlock=uint32(self.config["pool_identity"]["relative_lock_height"]),
+                        pool_memoization=Program.fromhex(self.config["pool_identity"]["pool_memoization"]),
+                    ),
+                    exiting=False,
+                ),
             )
             all_rewards = [
                 reward_record
@@ -179,7 +212,7 @@ class Service:
             if len(all_rewards) > 0:
                 all_spends.extend(
                     plotnft.forward_pool_reward(
-                        PoolReward(  # TODO: with underlying drivers, fix this to not require height
+                        PoolReward(
                             singleton_id=launcher_id,
                             coin=all_rewards[0].coin,
                             height=uint32.from_bytes(all_rewards[0].coin.parent_coin_info[28:]),
@@ -189,11 +222,12 @@ class Service:
                 reward_amount += all_rewards[0].coin.amount
 
         # TODO: fee
-        # TODO: persist and check tx_ids
         if len(all_spends) > 0:
-            await self.wallet.submit_transaction(spend_bundle=SpendBundle(all_spends, G2Element()), fee=uint64(0))
-            await self.store.add_reward_claim(  # TODO: make contingent on tx confirmation
-                timestamp=self.current_time, amount=uint64(reward_amount)
+            tx_response = await self.wallet.submit_transaction(
+                spend_bundle=SpendBundle(all_spends, G2Element()), fee=uint64(0)
+            )
+            await self.store.add_reward_claim(
+                timestamp=self.current_time, amount=uint64(reward_amount), tx_id=tx_response["tx_id"]
             )
 
     async def submit_payments(self) -> None:
@@ -223,6 +257,9 @@ class Service:
         reward_total = int(
             sum(claim["amount"] for claim in reward_claims["claims"]) * (1 - self.config["fee_basis_points"] / BASIS)
         )
+        if reward_total == 0 or user_difficulty_points == {}:
+            return
+
         total_points = sum(user_difficulty_points.values())
 
         raw = {user: reward_total * points / total_points for user, points in user_difficulty_points.items()}

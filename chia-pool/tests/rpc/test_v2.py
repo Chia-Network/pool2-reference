@@ -38,7 +38,7 @@ async def test_v2_rpc(
     service, current_time = reference_service
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            f"{farmer_rpc_url}/v2/get_pool_info",
+            f"{farmer_rpc_url}/v2/pool_info",
             json={},
             ssl=False,
         ) as resp:
@@ -46,7 +46,7 @@ async def test_v2_rpc(
                 await resp.json()
             )  # checking that this is a success response
         async with session.post(
-            f"{farmer_rpc_url}/v2/post_farmer",
+            f"{farmer_rpc_url}/v2/farmer",
             json=pool_protocol.PostFarmerRequest(
                 payload=pool_protocol.PostFarmerPayload(
                     launcher_id=bytes32.zeros,
@@ -54,7 +54,6 @@ async def test_v2_rpc(
                     authentication_public_key=SK.get_g1(),
                     payout_instructions=wallet_address,
                     suggested_difficulty=uint64(0),
-                    authentication_token_v2="",
                 ),
                 signature=G2Element(),  # TODO
             ).to_json_dict(),
@@ -64,7 +63,7 @@ async def test_v2_rpc(
                 await resp.json()
             )  # checking that this is a success response
         async with session.get(
-            f"{farmer_rpc_url}/v2/get_auth",
+            f"{farmer_rpc_url}/v2/auth",
             json=pool_protocol.GetAuthRequest(
                 pool_protocol.AuthenticationPayloadV2(
                     launcher_id=bytes32.zeros,
@@ -74,14 +73,14 @@ async def test_v2_rpc(
                     SK,
                     bytes(uint64(current_time.return_value))
                     + bytes32.zeros
-                    + bytes(service.config["pool_identity"]["pool_claim_hash"], "utf8"),
+                    + bytes32.from_hexstr(service.config["pool_identity"]["pool_claim_hash"]),
                 ),
             ).to_json_dict(),
             ssl=False,
         ) as resp:
             login_response = pool_protocol.GetAuthResponse.from_json_dict(await resp.json())
         async with session.put(
-            f"{farmer_rpc_url}/v2/put_farmer",
+            f"{farmer_rpc_url}/v2/farmer",
             json=pool_protocol.PutFarmerRequest(
                 payload=pool_protocol.PutFarmerPayload(
                     launcher_id=bytes32.zeros,
@@ -97,7 +96,7 @@ async def test_v2_rpc(
         ) as resp:
             pool_protocol.PutFarmerResponse.from_json_dict(await resp.json())
         async with session.get(
-            f"{farmer_rpc_url}/v2/get_farmer",
+            f"{farmer_rpc_url}/v2/farmer",
             json=pool_protocol.GetFarmerRequest(
                 launcher_id=bytes32.zeros,
                 authentication_token=uint64(0),
@@ -138,7 +137,7 @@ async def test_v2_rpc(
                     )
                 )
                 async with session.post(
-                    f"{farmer_rpc_url}/v2/post_partial",
+                    f"{farmer_rpc_url}/v2/partial",
                     json=pool_protocol.PostPartialRequest(
                         payload=partial,
                         authentication_token_v2=login_response.authentication_token,
@@ -157,7 +156,7 @@ async def test_v2_rpc(
         # Test authentication token expiration
         current_time.return_value += 60
         async with session.get(
-            f"{farmer_rpc_url}/v2/get_farmer",
+            f"{farmer_rpc_url}/v2/farmer",
             json=pool_protocol.GetFarmerRequest(
                 launcher_id=bytes32.zeros,
                 authentication_token=uint64(0),

@@ -4,11 +4,11 @@ import asyncio
 import datetime
 
 from api.node_rpc import NodeRPC
+from api.server import APIEndpointMetadata, FarmerRPCError
 from api.server import Config as ServerConfig
 from api.service import Config as ServiceConfig
 from api.service import Service
 from api.store import GetFarmerResponse, PartialMetadata, Store
-from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.consensus.pot_iterations import calculate_iterations_quality
 from chia.farmer.authentication import create_token, verify_token
 from chia.pools.plotnft_drivers import RewardPuzzle
@@ -17,7 +17,6 @@ from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_s
 from chia_rs import AugSchemeMPL, G2Element, Program
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
-from farmer_rpc.api import APIEndpointMetadata, FarmerRPCError
 
 
 async def get_auth(
@@ -42,7 +41,7 @@ async def get_auth(
     message = (
         bytes(request.payload.timestamp)
         + bytes(request.payload.launcher_id)
-        + bytes(service.config["pool_identity"]["pool_claim_hash"], "utf8")
+        + bytes32.from_hexstr(service.config["pool_identity"]["pool_claim_hash"])
     )
     if not AugSchemeMPL.verify(farmer_record["authentication_public_key"], message, request.signature):
         raise FarmerRPCError(
@@ -89,11 +88,21 @@ async def get_farmer(
             message=f"Farmer with launcher_id {request.launcher_id.hex()} not found.",
         ) from err
 
+    last_payout = await service.store.get_latest_payout()
+    unpaid_partials = (
+        await service.store.get_partials(
+            launcher_id=request.launcher_id,
+            since=uint64(last_payout["timestamp"] if last_payout is not None else 0),
+            before=service.current_time,
+            confirmed=True,
+        )
+    )["partials"]
+
     return pool_protocol.GetFarmerResponse(
         authentication_public_key=farmer_record["authentication_public_key"],
         payout_instructions=farmer_record["payout_instructions"],
         current_difficulty=farmer_record["difficulty"],
-        current_points=uint64(0),  # TODO
+        current_points=uint64(sum(partial.difficulty for partial in unpaid_partials)),
     )
 
 
@@ -252,7 +261,7 @@ async def check_partial(
         raise RuntimeWarning("semantically impossible: both signage_point and eos are None")  # pragma: no cover
 
     # Note the use of peak_height + 1. We Are evaluating the suitability for the next block
-    constants = DEFAULT_CONSTANTS  # TODO: get constants via node or something
+    constants = (await node_rpc_client.get_constants())["constants"]
     blockchain_state = await node_rpc_client.get_blockchain_state()
     quality_string = verify_and_get_quality_string(
         partial.proof_of_space,
@@ -263,10 +272,7 @@ async def check_partial(
         prev_transaction_block_height=uint32(0),  # TODO
     )
     if quality_string is None:
-        raise FarmerRPCError(
-            pool_protocol.PoolErrorCode.INVALID_PROOF,
-            f"Invalid proof of space {partial.sp_hash}",
-        )
+        raise FarmerRPCError(pool_protocol.PoolErrorCode.INVALID_PROOF, f"Invalid proof of space {partial.sp_hash}")
 
     required_iters = calculate_iterations_quality(
         constants,
@@ -396,47 +402,45 @@ async def post_partial(
 
 METADATA = [
     APIEndpointMetadata(
-        endpoint_name="get_auth",
+        endpoint_name="auth",
         request_type="GET",
         request=pool_protocol.GetAuthRequest,
         response=pool_protocol.GetAuthResponse,
+        handler=get_auth,
     ),
     APIEndpointMetadata(
-        endpoint_name="get_farmer",
+        endpoint_name="farmer",
         request_type="GET",
         request=pool_protocol.GetFarmerRequest,
         response=pool_protocol.GetFarmerResponse,
+        handler=get_farmer,
     ),
     APIEndpointMetadata(
-        endpoint_name="post_farmer",
+        endpoint_name="farmer",
         request_type="POST",
         request=pool_protocol.PostFarmerRequest,
         response=pool_protocol.PostFarmerResponse,
+        handler=post_farmer,
     ),
     APIEndpointMetadata(
-        endpoint_name="put_farmer",
+        endpoint_name="farmer",
         request_type="PUT",
         request=pool_protocol.PutFarmerRequest,
         response=pool_protocol.PutFarmerResponse,
+        handler=put_farmer,
     ),
     APIEndpointMetadata(
-        endpoint_name="get_pool_info",
+        endpoint_name="pool_info",
         request_type="GET",
         request=None,
         response=pool_protocol.GetPoolInfoResponse,
+        handler=get_pool_info,
     ),
     APIEndpointMetadata(
-        endpoint_name="post_partial",
+        endpoint_name="partial",
         request_type="POST",
         request=pool_protocol.PostPartialRequest,
         response=pool_protocol.PostPartialResponse,
+        handler=post_partial,
     ),
 ]
-HANDLERS = {
-    "get_auth": get_auth,
-    "get_farmer": get_farmer,
-    "post_farmer": post_farmer,
-    "put_farmer": put_farmer,
-    "get_pool_info": get_pool_info,
-    "post_partial": post_partial,
-}

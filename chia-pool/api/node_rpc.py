@@ -6,13 +6,17 @@ from contextlib import asynccontextmanager
 from typing import Protocol
 
 from chia.consensus.signage_point import SignagePoint
-from chia_rs import CoinRecord, CoinSpend, EndOfSubSlotBundle
+from chia_rs import CoinRecord, CoinSpend, ConsensusConstants, EndOfSubSlotBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32, uint64
 from typing_extensions import Self, TypedDict
 
 
 # Responses
+class GetConstantsResponse(TypedDict):
+    constants: ConsensusConstants
+
+
 class GetBlockchainStateResponse(TypedDict):
     peak: uint32
     synced: bool
@@ -45,6 +49,7 @@ class NodeRPC(Protocol):
     async def create(cls, root_path: pathlib.Path) -> AsyncIterator[Self]:
         yield cls()
 
+    async def get_constants(self) -> GetConstantsResponse: ...
     async def get_blockchain_state(self) -> GetBlockchainStateResponse: ...
     async def get_coin_records_by_puzzle_hashes(
         self, *, puzzle_hashes: list[bytes32], include_spent_coins: bool, start_height: uint32

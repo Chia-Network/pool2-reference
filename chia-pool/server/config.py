@@ -30,8 +30,8 @@ class PoolInfoConfigSchema(Schema):
 class WebConfigSchema(Schema):
     host = fields.Str(required=True)
     port = fields.Int(required=True)
-    ssl_cert_path = fields.Str(required=True)
-    ssl_key_path = fields.Str(required=True)
+    ssl_cert_path = fields.Str(required=False)
+    ssl_key_path = fields.Str(required=False)
 
 
 class ConfigSchema(Schema):

@@ -82,8 +82,6 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
     async with env.wallet_state_manager.new_action_scope(wallet_envs.tx_config, push=True) as action_scope:
         farmer_1_user_puzhash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
         farmer_2_user_puzhash = await action_scope.get_puzzle_hash(env.wallet_state_manager)
-    farmer_1_payout_instructions = env.wallet_state_manager.encode_puzzle_hash(farmer_1_user_puzhash)
-    farmer_2_payout_instructions = env.wallet_state_manager.encode_puzzle_hash(farmer_2_user_puzhash)
     farmer_1_difficulty = uint64(100)
     farmer_2_difficulty = uint64(200)
     farmer_1_authentication_pubkey = (await farmer_1_wallet.get_current_plotnft()).user_config.synthetic_pubkey
@@ -94,14 +92,14 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
     await service.store.add_farmer(
         version=uint8(2),
         launcher_id=farmer_1_launcher_id,
-        payout_instructions=farmer_1_payout_instructions,
+        payout_instructions=farmer_1_user_puzhash.hex(),
         difficulty=farmer_1_difficulty,
         authentication_public_key=farmer_1_authentication_pubkey,
     )
     await service.store.add_farmer(
         version=uint8(2),
         launcher_id=farmer_2_launcher_id,
-        payout_instructions=farmer_2_payout_instructions,
+        payout_instructions=farmer_2_user_puzhash.hex(),
         difficulty=farmer_2_difficulty,
         authentication_public_key=farmer_2_authentication_pubkey,
     )
@@ -253,6 +251,7 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
             ),
         ]
     )
+    await service.collect_pool_rewards()  # another call to mark tx as confirmed
     await service.submit_payments()
     assert (await service.store.get_unpaid_reward_claims())["claims"] == []
     BASIS = 10_000

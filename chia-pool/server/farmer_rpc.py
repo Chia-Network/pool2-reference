@@ -9,14 +9,13 @@ from types import NoneType
 from typing import Any, get_type_hints
 
 from aiohttp import web
-from api.server import CONFIG_FILE_NAME, Config, VersionString
+from api.server import CONFIG_FILE_NAME, APIEndpointMetadata, Config, FarmerRPCError, VersionString
 from api.service import Service
 from chia.protocols.pool_protocol import ErrorResponse, PoolErrorCode
 from chia.util.streamable import Streamable
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16
 from config_loading import canonical_load_config
-from farmer_rpc.api import APIEndpointMetadata, FarmerRPCError
 from server.config import ConfigSchema
 from server.logging import setup_logging
 from typing_extensions import Self
@@ -76,10 +75,6 @@ class FarmerRPCServer:
         cls,
         *,
         farmer_rpcs: dict[VersionString, list[APIEndpointMetadata]],
-        handlers: dict[
-            VersionString,
-            dict[str, Callable[[Streamable | None, Service, Config, bytes32], Coroutine[Any, Any, Streamable | None]]],
-        ],
         service: Service,
         token_sk: bytes32,
         root_path: pathlib.Path,
@@ -94,9 +89,7 @@ class FarmerRPCServer:
         for version_string, endpoint_metadatas in farmer_rpcs.items():
             self.logger.debug("Adding routes for version %s", version_string)
             for route in endpoint_metadatas:
-                handler = _wrap_http_handler(
-                    handlers[version_string][route.endpoint_name], service, config, token_sk, self.logger
-                )
+                handler = _wrap_http_handler(route.handler, service, config, token_sk, self.logger)
                 app.router.add_route(
                     method=route.request_type,
                     path=f"/{version_string}/{route.endpoint_name}",
@@ -112,13 +105,16 @@ class FarmerRPCServer:
         try:
             self.logger.info("Setting up AppRunner")
             await self.runner.setup()
-            ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            self.logger.debug(
-                "Loading cert chain from %s and %s",
-                config["web_config"]["ssl_cert_path"],
-                config["web_config"]["ssl_key_path"],
-            )
-            ssl_context.load_cert_chain(config["web_config"]["ssl_cert_path"], config["web_config"]["ssl_key_path"])
+            if config["web_config"].get("ssl_cert_path") is None or config["web_config"].get("ssl_key_path") is None:
+                ssl_context = None
+            else:
+                ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                self.logger.debug(
+                    "Loading cert chain from %s and %s",
+                    config["web_config"]["ssl_cert_path"],
+                    config["web_config"]["ssl_key_path"],
+                )
+                ssl_context.load_cert_chain(config["web_config"]["ssl_cert_path"], config["web_config"]["ssl_key_path"])
             self.site = web.TCPSite(
                 self.runner,
                 host=config["web_config"]["host"],

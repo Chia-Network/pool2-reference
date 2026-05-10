@@ -9,6 +9,7 @@ from api.node_rpc import (
     GetBlockchainStateResponse,
     GetCoinRecordByNameResponse,
     GetCoinRecordsByPuzzleHashesResponse,
+    GetConstantsResponse,
     GetPuzzleAndSolutionResponse,
     GetRecentSignagePointOrEOSResponse,
 )
@@ -42,6 +43,9 @@ class NodeRPC:
         ) as client:
             self.client = client
             yield self
+
+    async def get_constants(self) -> GetConstantsResponse:
+        return GetConstantsResponse(constants=await self.client.get_constants())
 
     async def get_blockchain_state(self) -> GetBlockchainStateResponse:
         dict_response = await self.client.get_blockchain_state()

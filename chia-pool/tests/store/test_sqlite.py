@@ -171,9 +171,10 @@ async def test_sqlite_store(store_config: None, store_type: type[Store], root_pa
             payout_details=farmer_1_payout_instructions,
             timestamp=uint64(2),
         )
-        await store.add_reward_claim(timestamp=uint64(1), amount=uint64(100))
+        await store.add_reward_claim(timestamp=uint64(1), amount=uint64(100), tx_id=bytes32.zeros)
+        await store.confirm_claim_tx(tx_id=bytes32.zeros)
         assert await store.get_unpaid_reward_claims() == GetRewardClaimsResponse(
-            claims=[ClaimMetadata(timestamp=uint64(1), amount=uint64(100))]
+            claims=[ClaimMetadata(timestamp=uint64(1), amount=uint64(100), tx_id=bytes32.zeros)]
         )
         await store.set_claims_statuses(timestamps=[uint64(1)])
         assert await store.get_unpaid_reward_claims() == GetRewardClaimsResponse(claims=[])

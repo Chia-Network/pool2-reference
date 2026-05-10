@@ -14,6 +14,7 @@ from api.store import (
     GetLauncherIDsResponse,
     GetPartialsResponse,
     GetRewardClaimsResponse,
+    IsPendingRewardClaimResponse,
     PartialMetadata,
 )
 from chia.util.db_wrapper import DBWrapper2
@@ -63,7 +64,12 @@ class Store:
                     "confirmed boolean)"
                 )
                 await conn.execute(
-                    "CREATE TABLE IF NOT EXISTS claims(timestamp bigint PRIMARY KEY, amount bigint, confirmed boolean)"
+                    "CREATE TABLE IF NOT EXISTS claims("
+                    "timestamp bigint PRIMARY KEY, "
+                    "amount bigint, "
+                    "tx_id blob, "
+                    "tx_confirmed boolean, "
+                    "paid boolean)"
                 )
                 await conn.execute(
                     "CREATE TABLE IF NOT EXISTS payouts(timestamp bigint PRIMARY KEY, payout_details string)"
@@ -110,6 +116,13 @@ class Store:
                 authentication_public_key=G1Element.from_bytes(row[4]),
             )
 
+    async def delete_farmer(self, *, launcher_id: bytes32) -> None:
+        async with self.db_wrapper.writer_maybe_transaction() as conn:
+            await conn.execute(
+                "DELETE FROM farmers WHERE launcher_id = ?",
+                (launcher_id,),
+            )
+
     async def update_difficulty(self, *, launcher_id: bytes32, difficulty: uint64) -> None:
         async with self.db_wrapper.writer_maybe_transaction() as conn:
             await conn.execute(
@@ -145,6 +158,13 @@ class Store:
                 "INSERT OR REPLACE INTO singletons "
                 "(launcher_id, coin_id, created_height, exiting_height) VALUES (?, ?, ?, ?)",
                 (launcher_id, coin_id, created_height, exiting_height),
+            )
+
+    async def delete_singleton(self, *, launcher_id: bytes32) -> None:
+        async with self.db_wrapper.writer_maybe_transaction() as conn:
+            await conn.execute(
+                "DELETE FROM singletons WHERE launcher_id = ?",
+                (launcher_id,),
             )
 
     async def get_latest_singleton(self, *, launcher_id: bytes32) -> GetLatestSingletonResponse:
@@ -237,11 +257,36 @@ class Store:
                 (launcher_id, timestamp),
             )
 
-    async def add_reward_claim(self, *, timestamp: uint64, amount: uint64) -> None:
+    async def delete_all_partials(self, *, launcher_id: bytes32) -> None:
         async with self.db_wrapper.writer_maybe_transaction() as conn:
             await conn.execute(
-                "INSERT OR REPLACE INTO claims (timestamp, amount, confirmed) VALUES (?, ?, FALSE)",
-                (timestamp, amount),
+                "DELETE FROM partials WHERE launcher_id = ?",
+                (launcher_id,),
+            )
+
+    async def add_reward_claim(self, *, timestamp: uint64, amount: uint64, tx_id: bytes32) -> None:
+        async with self.db_wrapper.writer_maybe_transaction() as conn:
+            await conn.execute(
+                "INSERT OR REPLACE INTO claims (timestamp, amount, tx_id, tx_confirmed, paid) "
+                "VALUES (?, ?, ?, FALSE, FALSE)",
+                (timestamp, amount, tx_id),
+            )
+
+    async def is_pending_reward_claim(self) -> IsPendingRewardClaimResponse:
+        async with self.db_wrapper.reader() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM claims WHERE tx_confirmed = FALSE",
+            )
+            rows = await cursor.fetchall()
+            if len(list(rows)) > 0:
+                return IsPendingRewardClaimResponse(pending=True, tx_id=next(iter(rows))[2])
+            return IsPendingRewardClaimResponse(pending=False, tx_id=None)
+
+    async def confirm_claim_tx(self, tx_id: bytes32) -> None:
+        async with self.db_wrapper.writer_maybe_transaction() as conn:
+            await conn.execute(
+                "UPDATE claims SET tx_confirmed = TRUE WHERE tx_id = ?",
+                (tx_id,),
             )
 
     async def set_claims_statuses(self, *, timestamps: list[uint64]) -> None:
@@ -249,17 +294,19 @@ class Store:
             return
         async with self.db_wrapper.writer_maybe_transaction() as conn:
             await conn.execute(
-                f"UPDATE claims SET confirmed = TRUE WHERE timestamp IN ({','.join(['?'] * len(timestamps))})",  # noqa: S608
+                f"UPDATE claims SET paid = TRUE WHERE timestamp IN ({','.join(['?'] * len(timestamps))})",  # noqa: S608
                 tuple(timestamps),
             )
 
     async def get_unpaid_reward_claims(self) -> GetRewardClaimsResponse:
         async with self.db_wrapper.reader() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM claims WHERE confirmed = FALSE",
+                "SELECT * FROM claims WHERE paid = FALSE AND tx_confirmed = TRUE",
             )
             rows = await cursor.fetchall()
-            return GetRewardClaimsResponse(claims=[ClaimMetadata(timestamp=row[0], amount=row[1]) for row in rows])
+            return GetRewardClaimsResponse(
+                claims=[ClaimMetadata(timestamp=row[0], amount=row[1], tx_id=bytes32(row[2])) for row in rows]
+            )
 
     async def add_payout(self, *, timestamp: uint64, payout_details: str) -> None:
         async with self.db_wrapper.writer_maybe_transaction() as conn:

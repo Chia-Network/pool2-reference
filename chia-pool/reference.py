@@ -34,7 +34,6 @@ async def start_async(*, auth_sk: bytes32, root_path: pathlib.Path) -> None:
             PoolServer.create_pooling_tasks(service=service, root_path=root_path),
             FarmerRPCServer.create_rpc(
                 farmer_rpcs={"v2": v2.METADATA},
-                handlers={"v2": v2.HANDLERS},
                 service=service,
                 token_sk=auth_sk,
                 root_path=root_path,
@@ -71,6 +70,7 @@ def create_config(
     config_path: pathlib.Path,
     config_info: api.store.Config | api.rpc.Config | api.service.Config | api.server.Config,
 ) -> None:
+    config_path = config_path.expanduser()
     if not config_path.exists():
         config_path.touch()
     with config_path.open(mode="w", encoding="utf8") as file:
@@ -92,9 +92,9 @@ def chia_service_options(func: Callable[..., None]) -> Callable[..., None]:
         "--hostname",
         type=str,
         required=True,
-        help="The hostname where the full node is running",
+        help="The hostname where the service is running",
         show_default=True,
-        default="127.0.0.1",
+        default="localhost",
     )(
         click.option("--rpc-port", type=int, required=True, help="The port to use for the full node RPC server")(
             click.option(
@@ -240,7 +240,7 @@ def wallet(
     required=True,
     help="The minimum difficulty for a farmer to be included in the pool",
     show_default=True,
-    default=0,
+    default=10,
 )
 @click.option(
     "--default-difficulty",
@@ -248,7 +248,7 @@ def wallet(
     required=True,
     help="The default difficulty for a farmer if a difficulty is not suggested",
     show_default=True,
-    default=0,
+    default=10,
 )
 @click.option(
     "--partial-time-limit",
@@ -296,7 +296,7 @@ def wallet(
     required=True,
     help="The number of partials per --time-target interval a farmer should be submitting",
     show_default=True,
-    default=0,
+    default=20,
 )
 @click.option(
     "--time-target",
@@ -445,8 +445,6 @@ def service(
     type=str,
     required=True,
     help="The URL of the pool logo",
-    show_default=True,
-    default="",
 )
 @click.option(
     "--pool-description",
@@ -483,13 +481,15 @@ def service(
 @click.option(
     "--ssl-cert-path",
     type=click.Path(),
-    required=True,
+    required=False,
+    default=None,
     help="The path to the SSL certificate for the web server",
 )
 @click.option(
     "--ssl-key-path",
     type=click.Path(),
-    required=True,
+    required=False,
+    default=None,
     help="The path to the SSL key for the web server",
 )
 @click.option(
@@ -498,15 +498,15 @@ def service(
     required=True,
     help="The interval in seconds for the service loop",
     show_default=True,
-    default=1,
+    default=20,
 )
 @click.option(
     "--authentication-token-timeout",
     type=int,
     required=True,
-    help="The timeout in seconds for authentication tokens",
+    help="The timeout in minutes for authentication tokens",
     show_default=True,
-    default=0,
+    default=10,
 )
 def server(
     *,
@@ -526,8 +526,8 @@ def server(
     pool_welcome_message: str,
     web_host: str,
     web_port: int,
-    ssl_cert_path: str,
-    ssl_key_path: str,
+    ssl_cert_path: str | None,
+    ssl_key_path: str | None,
     service_loop_intervals: int,
     authentication_token_timeout: int,
 ) -> None:
@@ -554,8 +554,14 @@ def server(
             web_config=api.server.WebConfig(
                 host=web_host,
                 port=web_port,
-                ssl_cert_path=ssl_cert_path,
-                ssl_key_path=ssl_key_path,
+                **(
+                    {
+                        "ssl_cert_path": ssl_cert_path,
+                        "ssl_key_path": ssl_key_path,
+                    }
+                    if ssl_cert_path is not None and ssl_key_path is not None
+                    else {}
+                ),
             ),
             service_loop_intervals=service_loop_intervals,
             authentication_token_timeout=authentication_token_timeout,

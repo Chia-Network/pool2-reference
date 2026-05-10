@@ -8,7 +8,7 @@ import pytest
 from api.service import Service as ServiceAPI
 from chia.util.timing import adjusted_timeout
 from chia_rs.sized_bytes import bytes32
-from farmer_rpc.v2 import HANDLERS, METADATA
+from farmer_rpc.v2 import METADATA
 from server.farmer_rpc import FarmerRPCServer
 
 
@@ -30,7 +30,6 @@ async def farmer_rpc_url(
     service, _ = reference_service
     async with FarmerRPCServer.create_rpc(
         farmer_rpcs={"v2": METADATA},
-        handlers={"v2": HANDLERS},
         service=service,
         token_sk=bytes32.zeros,
         root_path=root_path,

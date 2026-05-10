@@ -3,15 +3,35 @@ from __future__ import annotations
 import pathlib
 from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import asynccontextmanager
-from typing import Any, Literal, Protocol, TypedDict
+from dataclasses import dataclass
+from typing import Any, Literal, Protocol, TypedDict, final
 
 from api.service import Service
+from chia.protocols import pool_protocol
 from chia.util.streamable import Streamable
 from chia_rs.sized_bytes import bytes32
-from farmer_rpc.api import APIEndpointMetadata
 from typing_extensions import Self
 
 VersionString = str
+
+
+@final
+@dataclass(frozen=True, kw_only=True)
+class APIEndpointMetadata:
+    endpoint_name: str
+    request_type: Literal["GET", "PUT", "POST"]
+    request: type[Streamable] | None
+    response: type[Streamable] | None
+    handler: Callable[[Streamable | None, Service, Config, bytes32], Coroutine[Any, Any, Streamable | None]]
+
+
+class FarmerRPCError(Exception):
+    code: pool_protocol.PoolErrorCode
+    message: str
+
+    def __init__(self, code: pool_protocol.PoolErrorCode, message: str) -> None:
+        self.code = code
+        self.message = message
 
 
 class TaskServer(Protocol):
@@ -28,10 +48,6 @@ class RPCServer(Protocol):
         cls,
         *,
         farmer_rpcs: dict[VersionString, list[APIEndpointMetadata]],
-        handlers: dict[
-            VersionString,
-            dict[str, Callable[[Streamable | None, Service, Config, bytes32], Coroutine[Any, Any, Streamable | None]]],
-        ],
         service: Service,
         token_sk: bytes32,
         root_path: pathlib.Path,
