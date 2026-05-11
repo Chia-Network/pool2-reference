@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import pathlib
 from collections.abc import AsyncIterator, Iterator
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 from api.service import CONFIG_FILE_NAME
 from api.service import Service as ServiceAPI
 from chia._tests.environments.wallet import WalletTestFramework
+from chia.full_node.full_node_rpc_api import FullNodeRpcApi
 from chia.util.timing import adjusted_timeout
-from chia_rs.sized_ints import uint64
+from chia_rs.sized_ints import uint64, uint128
 from click.testing import CliRunner
 from node.rpc_wrapper import NodeRPC
 from reference import cli
@@ -93,7 +94,14 @@ async def reference_service(
         Store.create(root_path=root_path) as store,
     ):
         # mock in a timestamp
-        with patch.object(Service, "current_time", new_callable=PropertyMock) as current_time:
+        with (
+            patch.object(Service, "current_time", new_callable=PropertyMock) as current_time,
+            patch.object(
+                FullNodeRpcApi,
+                "get_network_space",
+                new=AsyncMock(return_value={"space": uint128(0)}),
+            ),
+        ):
             service = Service.create(store=store, full_node=node_rpc, wallet=wallet_rpc, root_path=root_path)
             current_time.return_value = uint64(service.config["partial_confirmation_delay"])
             await wallet_envs.full_node.wait_for_wallet_synced(wallet_node=wallet_envs.environments[0].node)
