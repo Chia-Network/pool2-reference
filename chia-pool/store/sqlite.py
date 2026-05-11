@@ -280,7 +280,7 @@ class Store:
             )
             rows = await cursor.fetchall()
             if len(list(rows)) > 0:
-                return IsPendingRewardClaimResponse(pending=True, tx_id=next(iter(rows))[2])
+                return IsPendingRewardClaimResponse(pending=True, tx_id=bytes32(next(iter(rows))[2]))
             return IsPendingRewardClaimResponse(pending=False, tx_id=None)
 
     async def confirm_claim_tx(self, tx_id: bytes32) -> None:
