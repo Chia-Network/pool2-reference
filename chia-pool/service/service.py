@@ -206,7 +206,8 @@ class Service:
                 reward_record
                 for reward_record in response["coin_records"]
                 if reward_record.coin.puzzle_hash == launcher_id_to_reward_hash[launcher_id]
-                and reward_record.coin.parent_coin_info[0:16] == bytes.fromhex(self.config["genesis_challenge"])[0:16]
+                and reward_record.coin.parent_coin_info[0:16]
+                == bytes32.from_hexstr(self.config["genesis_challenge"])[0:16]
                 and reward_record.confirmed_block_index <= peak_height - self.config["confirmation_security_threshold"]
             ]
             if len(all_rewards) > 0:

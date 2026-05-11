@@ -141,11 +141,6 @@ async def put_farmer(
 
     The purpose of this endpoint is to update any farmer information after the farmer has already been posted.
     """
-    if request.payload.authentication_token is None:
-        raise FarmerRPCError(
-            code=pool_protocol.PoolErrorCode.INVALID_AUTHENTICATION_TOKEN,
-            message="Authentication token required for PUT /farmer",
-        )
     if not verify_token(
         token_sk=token_sk.hex(),
         token=request.payload.authentication_token_v2,
