@@ -3,7 +3,9 @@ name: 🚨 Check commit signing
 on:
   push:
     branches:
+      - long_lived/**
       - main
+      - release/**
   pull_request:
     branches:
       - "**"
