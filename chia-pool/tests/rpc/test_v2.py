@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import dataclasses
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import aiohttp
 import pytest
+from api.node_rpc import GetRecentSignagePointOrEOSResponse
 from api.service import Service as ServiceAPI
 from chia._tests.environments.wallet import WalletTestFramework
 from chia.pools.plotnft_drivers import RewardPuzzle
@@ -30,7 +31,6 @@ wallet_address2 = "xch1ne8gwkm975x3sm48j99gr686g0v9nsdj9j9suxu929za756k272q34kfd
     [{"num_environments": 1, "blocks_needed": [1]}],
     indirect=True,
 )
-@pytest.mark.standard_block_tools
 @pytest.mark.anyio
 async def test_v2_rpc(
     wallet_envs: WalletTestFramework, reference_service: tuple[ServiceAPI, PropertyMock], farmer_rpc_url: str
@@ -111,17 +111,14 @@ async def test_v2_rpc(
                 current_difficulty=uint64(10),
                 current_points=uint64(0),
             )
-        recent_eos_hashes = wallet_envs.full_node.full_node.full_node_store.recent_eos.cache.keys()
-        recent_sp_hashes = wallet_envs.full_node.full_node.full_node_store.recent_signage_points.cache.keys()
-        use_eos_hash = len(list(recent_eos_hashes)) != 0
         pos = (await wallet_envs.full_node.get_all_full_blocks())[-1].reward_chain_block.proof_of_space
         pos = pos.replace(pool_contract_puzzle_hash=RewardPuzzle(singleton_id=bytes32.zeros).puzzle_hash())
         partial = pool_protocol.PostPartialPayload(
             launcher_id=bytes32.zeros,
             authentication_token=uint64(0),
             proof_of_space=pos,
-            sp_hash=next(iter(recent_eos_hashes if use_eos_hash else recent_sp_hashes)),
-            end_of_sub_slot=use_eos_hash,
+            sp_hash=bytes32.zeros,
+            end_of_sub_slot=True,
             harvester_id=bytes32.zeros,
         )
         original_difficulty = (await service.store.get_farmer(launcher_id=bytes32.zeros))["difficulty"]
@@ -129,6 +126,19 @@ async def test_v2_rpc(
             patch("farmer_rpc.v2.AugSchemeMPL.aggregate_verify", return_value=True),
             patch("farmer_rpc.v2.verify_and_get_quality_string", return_value=bytes32.zeros),
             patch("farmer_rpc.v2.calculate_iterations_quality", return_value=uint64(10)),
+            patch.object(
+                service.full_node,
+                "get_recent_end_of_subslot",
+                new=AsyncMock(
+                    return_value=GetRecentSignagePointOrEOSResponse(
+                        eos=PropertyMock(),
+                        signage_point=None,
+                        time_received=service.current_time,
+                        exists=True,
+                        reverted=False,
+                    )
+                ),
+            ),
         ):
             for i in range(3):
                 partial = (
