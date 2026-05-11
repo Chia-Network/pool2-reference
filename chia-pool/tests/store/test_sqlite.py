@@ -129,18 +129,21 @@ async def test_sqlite_store(store_config: None, store_type: type[Store], root_pa
                 partial=partial_metadata_at_index(i),
             )
 
+        def reverse_range(x: int, y: int) -> range:
+            return range(y - 1, x - 1, -1)
+
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True) == GetPartialsResponse(
             partials=[]
         )
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=False) == GetPartialsResponse(
-            partials=[partial_metadata_at_index(i) for i in range(3)]
+            partials=[partial_metadata_at_index(i) for i in reverse_range(0, 3)]
         )
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=False, since=uint64(1)
-        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in range(1, 3)])
+        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in reverse_range(1, 3)])
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=False, before=uint64(1)
-        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in range(1)])
+        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in reverse_range(0, 1)])
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=False, count=uint64(2)
         ) == GetPartialsResponse(
@@ -151,14 +154,14 @@ async def test_sqlite_store(store_config: None, store_type: type[Store], root_pa
         )
         await store.confirm_partials(launcher_id=farmer_1_launcher_id, until_timestamp=uint64(2))
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=True) == GetPartialsResponse(
-            partials=[partial_metadata_at_index(i) for i in range(2)]
+            partials=[partial_metadata_at_index(i) for i in reverse_range(0, 2)]
         )
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=True, since=uint64(1)
-        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in range(1, 2)])
+        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in reverse_range(1, 2)])
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=True, since=uint64(0), before=uint64(1)
-        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in range(1)])
+        ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in reverse_range(0, 1)])
         await store.delete_partial(launcher_id=farmer_1_launcher_id, timestamp=uint64(2))
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=False) == GetPartialsResponse(
             partials=[]
