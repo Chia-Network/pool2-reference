@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
@@ -9,7 +9,6 @@ from api.service import CONFIG_FILE_NAME
 from api.service import Service as ServiceAPI
 from chia._tests.environments.wallet import WalletTestFramework
 from chia.full_node.full_node_rpc_api import FullNodeRpcApi
-from chia.util.timing import adjusted_timeout
 from chia_rs.sized_ints import uint64, uint128
 from click.testing import CliRunner
 from node.rpc_wrapper import NodeRPC
@@ -18,17 +17,6 @@ from service.service import Service
 from store.sqlite import Store
 from tests.config_creation import create_config
 from wallet.rpc_wrapper import WalletRPC
-
-
-@pytest.fixture(autouse=True)
-def _patch_adjusted_timeout_longer() -> Iterator[None]:
-    def new_adjusted_timeout(timeout: float | None) -> float | None:
-        if timeout is None:
-            return None
-        return adjusted_timeout(timeout) + 30
-
-    with patch("chia.simulator.full_node_simulator.adjusted_timeout", side_effect=new_adjusted_timeout):
-        yield
 
 
 @pytest.fixture

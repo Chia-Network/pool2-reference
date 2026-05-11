@@ -19,7 +19,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from tests.node.conftest import *  # noqa: F403
-from tests.rpc.conftest import *  # noqa: F403
 from tests.server.conftest import *  # noqa: F403
 from tests.service.conftest import *  # noqa: F403
 from tests.store.conftest import *  # noqa: F403
