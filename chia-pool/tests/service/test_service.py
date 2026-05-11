@@ -210,7 +210,8 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
                 post_block_balance_updates={
                     1: {"set_remainder": True},
                     2: {"set_remainder": True},
-                    3: {"set_remainder": True},
+                    # We just want to be sure we've received the second farming reward
+                    3: {"confirmed_wallet_balance": 1_750_000_000_000, "set_remainder": True},
                 },
             ),
         ]
