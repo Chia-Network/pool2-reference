@@ -218,7 +218,8 @@ class Store:
                 + (" AND confirmed = TRUE" if confirmed else " AND confirmed = FALSE")
                 + (" AND timestamp >= ?" if since is not None else "")
                 + (" AND timestamp < ?" if before is not None else "")
-                + (" ORDER BY timestamp DESC LIMIT ?" if count is not None else ""),
+                + " ORDER BY timestamp DESC"
+                + (" LIMIT ?" if count is not None else ""),
                 tuple(
                     [launcher_id]
                     + ([since] if since is not None else [])
