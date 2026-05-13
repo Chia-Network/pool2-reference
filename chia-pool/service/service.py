@@ -276,7 +276,7 @@ class Service:
 
         # TODO: fee
         # TODO: persist and check tx_ids
-        # TODO: persist claims pending payouts
+        payment_batches: list[list[Payment]] = []
         for i in range(0, len(payouts), self.config["max_additions_per_transaction"]):
             payout_batch = {
                 user: payouts[user]
@@ -285,17 +285,21 @@ class Service:
                 ]
             }
             if len(payout_batch) > 0:
-                await self.wallet.send_transaction(
-                    payments=[
+                payment_batches.append(
+                    [
                         Payment(
                             puzzle_hash=(puzzle_hash := convert_payout_instructions(user_payout_instructions[user])),
                             amount=uint64(amount),
                             memos=[puzzle_hash.hex()],
                         )
                         for user, amount in payout_batch.items()
-                    ],
-                    fee=uint64(0),
+                    ]
                 )
+        for payment_batch in payment_batches:
+            await self.wallet.send_transaction(
+                payments=payment_batch,
+                fee=uint64(0),
+            )
         await self.store.add_payout(
             timestamp=timestamp,
             payout_details="",  # TODO: delete this?

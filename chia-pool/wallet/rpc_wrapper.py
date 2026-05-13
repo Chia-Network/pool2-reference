@@ -97,7 +97,7 @@ class WalletRPC:
                         amount=uint64(sum([spend.coin.amount for spend in spend_bundle.coin_spends])),
                         fee_amount=fee,
                         sent_to=[],
-                        name=bytes32(b"\x00" * 32),
+                        name=spend_bundle.name(),
                         type=uint32(TransactionType.OUTGOING_TX.value),
                         memos=compute_memos(as_wallet_spend_bundle),
                         sent=uint32(0),
@@ -106,7 +106,7 @@ class WalletRPC:
                         additions=[coin for coin in spend_bundle.additions() if coin.amount != 1],
                         removals=[coin for coin in spend_bundle.removals() if coin.amount != 1],
                         wallet_id=uint32(1),
-                        trade_id=spend_bundle.name(),
+                        trade_id=None,
                         valid_times=ConditionValidTimes(),
                         to_address=encode_puzzle_hash(bytes32.zeros, "xch"),
                     )
