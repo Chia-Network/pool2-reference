@@ -216,7 +216,6 @@ class Service:
                         PoolReward(
                             singleton_id=launcher_id,
                             coin=all_rewards[0].coin,
-                            height=uint32.from_bytes(all_rewards[0].coin.parent_coin_info[28:]),
                         )
                     )
                 )

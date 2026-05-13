@@ -63,6 +63,8 @@ class WalletRPC:
             excluded_coin_amounts=[],
             excluded_coin_ids=[],
             reuse_puzhash=True,
+            included_coin_ids=[],
+            primary_coin=None,
         )
 
     async def send_transaction(self, *, payments: list[Payment], fee: uint64) -> SendTransactionResponse:
