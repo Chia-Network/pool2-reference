@@ -6,16 +6,7 @@ import pytest
 from api.node_rpc import GetRecentSignagePointOrEOSResponse
 from api.service import Service as ServiceAPI
 from api.store import PartialMetadata
-from chia._tests.conftest import (  # noqa: PLC2701
-    blockchain_constants,  # noqa: F401
-    consensus_mode,  # noqa: F401
-    farmer_harvester_2_simulators_zero_bits_plot_filter,  # noqa: F401
-    self_hostname,  # noqa: F401
-    trusted_full_node,  # noqa: F401
-    tx_config,  # noqa: F401
-)
 from chia._tests.environments.wallet import WalletStateTransition, WalletTestFramework  # noqa: PLC2701
-from chia._tests.wallet.conftest import wallet_environments  # noqa: PLC2701, F401
 from chia.pools.plotnft_drivers import RewardPuzzle
 from chia.pools.pool_wallet_info import NewPoolWalletInitialTargetState, PoolSingletonState
 from chia.types.blockchain_format.program import Program
@@ -209,8 +200,8 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
                 },
                 post_block_balance_updates={
                     1: {"set_remainder": True},
-                    2: {"set_remainder": True},
                     # We just want to be sure we've received the second farming reward
+                    2: {"confirmed_wallet_balance": 1_750_000_000_000, "set_remainder": True},
                     3: {"confirmed_wallet_balance": 1_750_000_000_000, "set_remainder": True},
                 },
             ),
