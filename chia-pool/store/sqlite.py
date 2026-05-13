@@ -251,11 +251,11 @@ class Store:
                 (launcher_id, until_timestamp),
             )
 
-    async def delete_partial(self, *, launcher_id: bytes32, timestamp: uint64) -> None:
+    async def delete_partial(self, *, pos_hash: bytes32) -> None:
         async with self.db_wrapper.writer_maybe_transaction() as conn:
             await conn.execute(
-                "DELETE FROM partials WHERE launcher_id = ? AND timestamp = ?",
-                (launcher_id, timestamp),
+                "DELETE FROM partials WHERE pos_hash = ?",
+                (pos_hash,),
             )
 
     async def delete_all_partials(self, *, launcher_id: bytes32) -> None:

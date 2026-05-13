@@ -75,7 +75,7 @@ class Service:
                     partial=partial,
                     node_rpc=self.full_node,
                 ):
-                    await self.store.delete_partial(launcher_id=launcher_id, timestamp=partial.timestamp)
+                    await self.store.delete_partial(pos_hash=partial.pos_hash)
 
             await self.store.confirm_partials(launcher_id=launcher_id, until_timestamp=target_timestamp)
 

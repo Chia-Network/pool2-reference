@@ -162,7 +162,7 @@ async def test_sqlite_store(store_config: None, store_type: type[Store], root_pa
         assert await store.get_partials(
             launcher_id=farmer_1_launcher_id, confirmed=True, since=uint64(0), before=uint64(1)
         ) == GetPartialsResponse(partials=[partial_metadata_at_index(i) for i in reverse_range(0, 1)])
-        await store.delete_partial(launcher_id=farmer_1_launcher_id, timestamp=uint64(2))
+        await store.delete_partial(pos_hash=partial_metadata_at_index(2).pos_hash)
         assert await store.get_partials(launcher_id=farmer_1_launcher_id, confirmed=False) == GetPartialsResponse(
             partials=[]
         )
