@@ -25,7 +25,7 @@ priority = "supplemental"
 source = "https://github.com/Chia-Network/chia-pool/"
 
 [tool.poetry.dependencies]
-chia-blockchain = { git = "https://github.com/Chia-Network/chia-blockchain.git", rev = "9cf09af004195c06a51f4b244a19059f26b02c58" }
+chia-blockchain = { git = "https://github.com/Chia-Network/chia-blockchain.git", rev = "61eaefacd98126bb590dc12b354f9c449d1efc5d" }
 aiohttp = { version = ">=3.13.3,<4.0.0" }
 aiosqlite = { version = ">=0.22.1,<0.23.0" }
 chia-rs = { version = "0.42.1" }

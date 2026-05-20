@@ -37,7 +37,10 @@ def _wrap_http_handler(
             if request_class is NoneType:
                 deserialized_request = None
             else:
-                request_json = await request.json()
+                if request.method == "GET":
+                    request_json = request.rel_url.query
+                else:
+                    request_json = await request.json()
                 logger.debug("Request content: %s", request_json)
                 assert issubclass(request_class, Streamable)
                 deserialized_request = request_class.from_json_dict(request_json)  # type: ignore[arg-type]
