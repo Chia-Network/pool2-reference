@@ -95,20 +95,22 @@ async def test_rpc_server(server_config: None, root_path: pathlib.Path) -> None:
                 "v1": [
                     APIEndpointMetadata(
                         endpoint_name="test_endpoint",
-                        request_type="GET",
+                        request_type=method,
                         request=V1EndpointRequest,
                         response=V1EndpointResponse,
                         handler=v1_handler,
                     )
+                    for method in ("GET", "POST")
                 ],
                 "v2": [
                     APIEndpointMetadata(
                         endpoint_name="test_endpoint",
-                        request_type="GET",
+                        request_type=method,
                         request=V2EndpointRequest,
                         response=V2EndpointResponse,
                         handler=v2_handler,
                     )
+                    for method in ("GET", "POST")
                 ],
             },
             service=AsyncMock(),
@@ -119,13 +121,16 @@ async def test_rpc_server(server_config: None, root_path: pathlib.Path) -> None:
     ):
         # not sure what pyright is on about, this works fine
         port = farmer_rpc.site._server.sockets[0].getsockname()[1]  # type: ignore  # noqa: PGH003
-        for version_string, response_prefix in (("", "v1"), ("/v1", "v1"), ("/v2", "v2")):
-            async with session.get(
-                f"https://localhost:{port}{version_string}/test_endpoint",
-                json={f"{response_prefix}_argument": version_string},
-                ssl=False,
-            ) as resp:
-                assert await resp.json() == {
-                    f"{response_prefix}_response": version_string,
-                    "token_sk": "0x" + bytes32.zeros.hex(),
-                }
+        for method in ("GET", "POST"):
+            for version_string, response_prefix in (("", "v1"), ("/v1", "v1"), ("/v2", "v2")):
+                request_body = {f"{response_prefix}_argument": version_string}
+                async with session.request(
+                    method,
+                    f"https://localhost:{port}{version_string}/test_endpoint",
+                    ssl=False,
+                    **({"json": request_body} if method == "POST" else {"params": request_body}),
+                ) as resp:
+                    assert await resp.json() == {
+                        f"{response_prefix}_response": version_string,
+                        "token_sk": "0x" + bytes32.zeros.hex(),
+                    }

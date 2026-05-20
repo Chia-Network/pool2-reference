@@ -31,30 +31,28 @@ async def get_auth(
     """
 
     try:
-        farmer_record = await service.store.get_farmer(launcher_id=request.payload.launcher_id)
+        farmer_record = await service.store.get_farmer(launcher_id=request.launcher_id)
     except Exception as err:
         raise FarmerRPCError(
             code=pool_protocol.PoolErrorCode.FARMER_NOT_KNOWN,
-            message=f"Farmer with launcher_id {request.payload.launcher_id.hex()} unknown.",
+            message=f"Farmer with launcher_id {request.launcher_id.hex()} unknown.",
         ) from err
 
     message = (
-        bytes(request.payload.timestamp)
-        + bytes(request.payload.launcher_id)
+        bytes(request.timestamp)
+        + bytes(request.launcher_id)
         + bytes32.from_hexstr(service.config["pool_identity"]["pool_claim_hash"])
     )
     if not AugSchemeMPL.verify(farmer_record["authentication_public_key"], message, request.signature):
         raise FarmerRPCError(
             code=pool_protocol.PoolErrorCode.INVALID_SIGNATURE,
-            message=(
-                f"Failed to verify signature {request.signature} for launcher_id {request.payload.launcher_id.hex()}."
-            ),
+            message=(f"Failed to verify signature {request.signature} for launcher_id {request.launcher_id.hex()}."),
         )
 
     return pool_protocol.GetAuthResponse(
         authentication_token=create_token(
             token_sk=token_sk.hex(),
-            plotnft_id=request.payload.launcher_id,
+            plotnft_id=request.launcher_id,
             current_time=datetime.datetime.fromtimestamp(service.current_time, tz=datetime.timezone.utc),
             expires_minutes=uint8(config["authentication_token_timeout"]),
         ),

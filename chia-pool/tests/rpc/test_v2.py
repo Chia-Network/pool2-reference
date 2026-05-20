@@ -71,10 +71,8 @@ async def test_v2_rpc(
     assert isinstance(post_farmer_response, pool_protocol.PostFarmerResponse)
     login_response = await farmer_rpc.v2.get_auth(
         pool_protocol.GetAuthRequest(
-            pool_protocol.AuthenticationPayloadV2(
-                launcher_id=bytes32.zeros,
-                timestamp=current_time.return_value,
-            ),
+            launcher_id=bytes32.zeros,
+            timestamp=current_time.return_value,
             signature=AugSchemeMPL.sign(
                 SK,
                 bytes(uint64(current_time.return_value))

@@ -38,7 +38,7 @@ def _wrap_http_handler(
                 deserialized_request = None
             else:
                 if request.method == "GET":
-                    request_json = request.rel_url.query
+                    request_json = dict(request.rel_url.query)
                 else:
                     request_json = await request.json()
                 logger.debug("Request content: %s", request_json)
