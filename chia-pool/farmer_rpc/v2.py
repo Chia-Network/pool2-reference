@@ -10,13 +10,13 @@ from api.service import Config as ServiceConfig
 from api.service import Service
 from api.store import GetFarmerResponse, PartialMetadata, Store
 from chia.consensus.pot_iterations import calculate_iterations_quality
-from chia.farmer.authentication import create_token, verify_token
 from chia.pools.plotnft_drivers import RewardPuzzle
 from chia.protocols import pool_protocol
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
 from chia_rs import AugSchemeMPL, G2Element, Program
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
+from farmer_rpc.authentication import create_token, verify_token
 
 
 async def get_auth(
@@ -43,19 +43,25 @@ async def get_auth(
         + bytes(request.launcher_id)
         + bytes32.from_hexstr(service.config["pool_identity"]["pool_claim_hash"])
     )
-    if not AugSchemeMPL.verify(farmer_record["authentication_public_key"], message, request.signature):
+    if not AugSchemeMPL.verify(
+        AugSchemeMPL.derive_child_pk_unhardened(farmer_record["authentication_public_key"], 12381),
+        message,
+        request.signature,
+    ):
         raise FarmerRPCError(
             code=pool_protocol.PoolErrorCode.INVALID_SIGNATURE,
             message=(f"Failed to verify signature {request.signature} for launcher_id {request.launcher_id.hex()}."),
         )
 
+    current_time = uint64(service.current_time)
     return pool_protocol.GetAuthResponse(
         authentication_token=create_token(
             token_sk=token_sk.hex(),
             plotnft_id=request.launcher_id,
-            current_time=datetime.datetime.fromtimestamp(service.current_time, tz=datetime.timezone.utc),
+            current_time=datetime.datetime.fromtimestamp(current_time, tz=datetime.timezone.utc),
             expires_minutes=uint8(config["authentication_token_timeout"]),
         ),
+        expiration=uint64(current_time + config["authentication_token_timeout"] * 60),
     )
 
 
