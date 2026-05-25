@@ -74,7 +74,7 @@ async def test_v2_rpc(
             launcher_id=bytes32.zeros,
             timestamp=current_time.return_value,
             signature=AugSchemeMPL.sign(
-                SK,
+                AugSchemeMPL.derive_child_sk_unhardened(SK, 12381),
                 bytes(uint64(current_time.return_value))
                 + bytes32.zeros
                 + bytes32.from_hexstr(service.config["pool_identity"]["pool_claim_hash"]),
