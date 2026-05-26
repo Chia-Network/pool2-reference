@@ -24,7 +24,7 @@ jobs:
   test:
     name: ${{ matrix.os.name }} - ${{ matrix.python.name }}
     runs-on: ${{ matrix.os.runs-on }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -32,18 +32,23 @@ jobs:
           - name: "Ubuntu Intel"
             runs-on: ubuntu-latest
             platform: "ubuntu"
+            pytest-threads: 2
           - name: "Ubuntu Arm"
             runs-on: ubuntu-24.04-arm
             platform: "ubuntu"
+            pytest-threads: 2
           - name: "MacOS Intel"
-            runs-on: ${{ github.repository_owner == 'Chia-Network' && 'macos-13-intel' || 'macos-15-intel' }}
+            runs-on: "macos-15-intel"
             platform: "macos"
+            pytest-threads: 4
           - name: "MacOS M1"
-            runs-on: ${{ github.repository_owner == 'Chia-Network' && 'macos-13-arm64' || 'macos-15' }}
+            runs-on: "macos-15"
             platform: "macos"
+            pytest-threads: 4
           - name: "Windows"
             runs-on: windows-latest
             platform: "windows"
+            pytest-threads: 4
         python:
           - version: "3.10"
           - version: "3.11"
@@ -51,8 +56,9 @@ jobs:
           - version: "3.13"
 
     env:
+      CHIA_ROOT: ${{ github.workspace }}/.chia/mainnet
       JOB_FILE_NAME: tests_${{ matrix.os.name }}_python-${{ matrix.python.version }}
-      BLOCKS_AND_PLOTS_VERSION: 0.44.0
+      BLOCKS_AND_PLOTS_VERSION: 0.45.12
 
     steps:
       - name: Configure git
@@ -128,6 +134,28 @@ jobs:
         run: |
           mv chia-pool/ notchia-pool/
 
+      - name: Cache test blocks and plots
+        uses: actions/cache@v5
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MIN: 1
+        id: test-blocks-plots
+        with:
+          path: |
+            ${GITHUB_WORKSPACE}/.chia/blocks
+            ${GITHUB_WORKSPACE}/.chia/test-plots
+            ${GITHUB_WORKSPACE}/.chia/test-bundles
+          key: ${{ env.BLOCKS_AND_PLOTS_VERSION }}
+
+      - name: Checkout test blocks and plots
+        if: steps.test-blocks-plots.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release download -R Chia-Network/test-cache ${{ env.BLOCKS_AND_PLOTS_VERSION }} --archive=tar.gz -O - | tar xzf -
+          mkdir "${GITHUB_WORKSPACE}/.chia"
+          mv "${GITHUB_WORKSPACE}/test-cache-${{ env.BLOCKS_AND_PLOTS_VERSION }}/"* "${GITHUB_WORKSPACE}/.chia"
+
       - name: Test code with pytest
         run: |
-          pytest .
+          pytest . -n ${{ matrix.os.pytest-threads }}
