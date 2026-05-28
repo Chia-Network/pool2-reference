@@ -10,8 +10,9 @@ from api.service import Config as ServiceConfig
 from api.service import Service
 from api.store import GetFarmerResponse, PartialMetadata, Store
 from chia.consensus.pot_iterations import calculate_iterations_quality
-from chia.pools.plotnft_drivers import RewardPuzzle
+from chia.pools.plotnft_drivers import PlotNFTPuzzle, PoolConfig, RewardPuzzle, UserConfig
 from chia.protocols import pool_protocol
+from chia.types.blockchain_format.program import Program as ChiaBlockchainProgram
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
 from chia_rs import AugSchemeMPL, G2Element, Program
 from chia_rs.sized_bytes import bytes32
@@ -124,7 +125,31 @@ async def post_farmer(
             code=pool_protocol.PoolErrorCode.REQUEST_FAILED,
             message='Must have "authentication_public_key" and "payout_instructions" for POST',
         )
-    # TODO: verify farmer exists and have the key sign a message
+    expected_plotnft_puzzle = PlotNFTPuzzle(
+        launcher_id=request.payload.launcher_id,
+        genesis_challenge=bytes32.from_hexstr(service.config["genesis_challenge"]),
+        user_config=UserConfig(synthetic_pubkey=request.payload.authentication_public_key),
+        exiting=False,
+        pool_config=PoolConfig(
+            pool_puzzle_hash=bytes32.from_hexstr(service.config["pool_identity"]["pool_claim_hash"]),
+            heightlock=uint32(service.config["pool_identity"]["relative_lock_height"]),
+            pool_memoization=ChiaBlockchainProgram.fromhex(service.config["pool_identity"]["pool_memoization"]),
+        ),
+    )
+    plotnfts_response = await service.full_node.get_coin_records_by_puzzle_hashes(
+        puzzle_hashes=[expected_plotnft_puzzle.puzzle_hash(nonce=0)],
+        include_spent_coins=False,
+        start_height=uint32(service.config["scan_start_height"]),  # TODO: persist height scanned
+    )
+    if len(plotnfts_response["coin_records"]) > 1:
+        raise FarmerRPCError(code=pool_protocol.PoolErrorCode.INVALID_SINGLETON, message="Multiple plot NFTs found")
+    if len(plotnfts_response["coin_records"]) == 0:
+        raise FarmerRPCError(code=pool_protocol.PoolErrorCode.NOT_FOUND, message="No plot NFT found")
+    signing_key = AugSchemeMPL.derive_child_pk_unhardened(request.payload.authentication_public_key, 12381)
+    if not AugSchemeMPL.verify(signing_key, request.payload.get_hash(), request.signature):
+        raise FarmerRPCError(
+            code=pool_protocol.PoolErrorCode.INVALID_SIGNATURE, message="Invalid POST farmer signature"
+        )
     await service.store.add_farmer(
         version=uint8(2),
         launcher_id=request.payload.launcher_id,

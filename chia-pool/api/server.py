@@ -32,6 +32,7 @@ class FarmerRPCError(Exception):
     def __init__(self, code: pool_protocol.PoolErrorCode, message: str) -> None:
         self.code = code
         self.message = message
+        super().__init__(message)
 
 
 class TaskServer(Protocol):
