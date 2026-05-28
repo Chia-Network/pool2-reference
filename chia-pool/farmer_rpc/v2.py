@@ -258,7 +258,7 @@ async def check_partial(
             recent = await node_rpc_client.get_recent_signage_point(signage_point_hash=partial.sp_hash)
         if recent["exists"]:
             break
-        await asyncio.sleep(10)  # TODO: configurable
+        await asyncio.sleep(10)
 
     if recent is None or not recent["exists"] or recent["reverted"]:
         raise FarmerRPCError(
@@ -293,7 +293,7 @@ async def check_partial(
         challenge_hash,
         partial.sp_hash,
         height=uint32(blockchain_state["peak"] + 1),
-        prev_transaction_block_height=uint32(0),  # TODO
+        prev_transaction_block_height=blockchain_state["previous_transaction_block_height"],
     )
     if quality_string is None:
         raise FarmerRPCError(pool_protocol.PoolErrorCode.INVALID_PROOF, f"Invalid proof of space {partial.sp_hash}")

@@ -19,6 +19,7 @@ class GetConstantsResponse(TypedDict):
 
 class GetBlockchainStateResponse(TypedDict):
     peak: uint32
+    previous_transaction_block_height: uint32
     synced: bool
 
 
