@@ -71,9 +71,7 @@ class Store:
                     "tx_confirmed boolean, "
                     "paid boolean)"
                 )
-                await conn.execute(
-                    "CREATE TABLE IF NOT EXISTS payouts(timestamp bigint PRIMARY KEY, payout_details string)"
-                )
+                await conn.execute("CREATE TABLE IF NOT EXISTS payouts(timestamp bigint PRIMARY KEY)")
 
             yield store
 
@@ -309,11 +307,11 @@ class Store:
                 claims=[ClaimMetadata(timestamp=row[0], amount=row[1], tx_id=bytes32(row[2])) for row in rows]
             )
 
-    async def add_payout(self, *, timestamp: uint64, payout_details: str) -> None:
+    async def add_payout(self, *, timestamp: uint64) -> None:
         async with self.db_wrapper.writer_maybe_transaction() as conn:
             await conn.execute(
-                "INSERT INTO payouts (timestamp, payout_details) VALUES (?, ?)",
-                (timestamp, payout_details),
+                "INSERT INTO payouts (timestamp) VALUES (?)",
+                (timestamp,),
             )
 
     async def get_latest_payout(self) -> GetLatestPayoutResponse | None:
@@ -324,4 +322,4 @@ class Store:
             row = await cursor.fetchone()
             if row is None:
                 return None
-            return GetLatestPayoutResponse(timestamp=row[0], payout_details=row[1])
+            return GetLatestPayoutResponse(timestamp=row[0])

@@ -42,6 +42,8 @@ class ConfigSchema(Schema):
     default_difficulty = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     partial_time_limit = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     partial_confirmation_delay = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
+    partial_confirmation_batches = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
+    singleton_scan_batches = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     scan_start_height = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
     confirmation_security_threshold = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
     max_additions_per_transaction = fields.Integer(required=True, validate=UIntValidator(num_bits=32))

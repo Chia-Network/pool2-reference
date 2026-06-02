@@ -12,12 +12,13 @@ from api.wallet_rpc import (
     SendTransactionResponse,
     SubmitTransactionResponse,
 )
+from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.util.bech32m import encode_puzzle_hash
 from chia.wallet.conditions import ConditionValidTimes
 from chia.wallet.transaction_record import TransactionRecord
 from chia.wallet.util.compute_memos import compute_memos
 from chia.wallet.util.transaction_type import TransactionType
-from chia.wallet.util.tx_config import TXConfig
+from chia.wallet.util.tx_config import TXConfig, TXConfigLoader
 from chia.wallet.wallet_request_types import (
     Addition,
     CreateSignedTransaction,
@@ -26,17 +27,18 @@ from chia.wallet.wallet_request_types import (
 )
 from chia.wallet.wallet_rpc_client import WalletRpcClient
 from chia.wallet.wallet_spend_bundle import WalletSpendBundle
-from chia_rs import SpendBundle
+from chia_rs import ConsensusConstants, SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16, uint32, uint64
 from config_loading import canonical_load_config
-from rpc import ConfigSchema
 from typing_extensions import Self
+from wallet.config import ConfigSchema
 
 
 class WalletRPC:
     client: WalletRpcClient
     config: Config
+    constants: ConsensusConstants
 
     @classmethod
     @asynccontextmanager
@@ -56,16 +58,8 @@ class WalletRPC:
             yield self
 
     @property
-    def tx_config(self) -> TXConfig:  # TODO: make configurable
-        return TXConfig(
-            min_coin_amount=uint64(0),
-            max_coin_amount=uint64.MAXIMUM,
-            excluded_coin_amounts=[],
-            excluded_coin_ids=[],
-            reuse_puzhash=True,
-            included_coin_ids=[],
-            primary_coin=None,
-        )
+    def tx_config(self) -> TXConfig:
+        return TXConfigLoader.from_json_dict(self.config["tx_config"]).autofill(constants=DEFAULT_CONSTANTS)
 
     async def send_transaction(self, *, payments: list[Payment], fee: uint64) -> SendTransactionResponse:
         response = await self.client.create_signed_transactions(
@@ -82,7 +76,6 @@ class WalletRPC:
         return SendTransactionResponse(tx_ids=[tx.name for tx in response.transactions])
 
     async def submit_transaction(self, *, spend_bundle: SpendBundle, fee: uint64) -> SubmitTransactionResponse:
-        # TODO: optimize this function
         as_wallet_spend_bundle = WalletSpendBundle(
             coin_spends=spend_bundle.coin_spends,
             aggregated_signature=spend_bundle.aggregated_signature,

@@ -68,7 +68,7 @@ def config() -> None:
 def create_config(
     *,
     config_path: pathlib.Path,
-    config_info: api.store.Config | api.rpc.Config | api.service.Config | api.server.Config,
+    config_info: api.store.Config | api.rpc.Config | api.service.Config | api.server.Config | api.wallet.Config,
 ) -> None:
     config_path = config_path.expanduser()
     if not config_path.exists():
@@ -177,6 +177,17 @@ def node(
 @config.command()
 @root_path_option
 @chia_service_options
+@click.option("--minimum-coin-amount", type=int, required=False, help="The minimum coin amount to use in transactions")
+@click.option("--maximum-coin-amount", type=int, required=False, help="The maximum coin amount to use in transactions")
+@click.option(
+    "--excluded-coin-id", type=str, required=False, multiple=True, help="A coin ID to exclude from transactions"
+)
+@click.option(
+    "--excluded-coin-amount", type=int, required=False, multiple=True, help="A coin amount to exclude from transactions"
+)
+@click.option(
+    "--reuse-puzhash/--new-puzhashes", is_flag=True, default=True, help="Whether to reuse the puzhash for transactions"
+)
 def wallet(
     *,
     root_path: str,
@@ -188,6 +199,11 @@ def wallet(
     daemon_ssl_key: str,
     private_ssl_crt: str,
     private_ssl_key: str,
+    reuse_puzhash: bool,
+    minimum_coin_amount: int | None = None,
+    maximum_coin_amount: int | None = None,
+    excluded_coin_id: tuple[str] | None = None,
+    excluded_coin_amount: tuple[int] | None = None,
 ) -> None:
     create_config(
         config_path=pathlib.Path(root_path).joinpath(api.wallet_rpc.CONFIG_FILE_NAME),
@@ -205,6 +221,13 @@ def wallet(
                     crt=private_ssl_crt,
                     key=private_ssl_key,
                 ),
+            ),
+            tx_config=api.wallet_rpc.TXConfig(
+                reuse_puzhash=reuse_puzhash,
+                **({"min_coin_amount": minimum_coin_amount} if minimum_coin_amount is not None else {}),
+                **({"max_coin_amount": maximum_coin_amount} if maximum_coin_amount is not None else {}),
+                **({"excluded_coin_ids": list(excluded_coin_id)} if excluded_coin_id is not None else {}),
+                **({"excluded_coin_amounts": list(excluded_coin_amount)} if excluded_coin_amount is not None else {}),
             ),
         ),
     )
@@ -265,6 +288,22 @@ def wallet(
     help="The delay in seconds before a partial submission is confirmed",
     show_default=True,
     default=600,
+)
+@click.option(
+    "--partial-confirmation-batches",
+    type=int,
+    required=True,
+    help="How many partials to attempt confirming in a single batch while looping",
+    show_default=True,
+    default=100,
+)
+@click.option(
+    "--singleton-scan-batches",
+    type=int,
+    required=True,
+    help="How many singletons to poll for changes for at a time",
+    show_default=True,
+    default=10,
 )
 @click.option(
     "--scan-start-height",
@@ -330,6 +369,8 @@ def service(
     default_difficulty: int,
     partial_time_limit: int,
     partial_confirmation_delay: int,
+    partial_confirmation_batches: int,
+    singleton_scan_batches: int,
     scan_start_height: int,
     confirmation_security_threshold: int,
     max_additions_per_transaction: int,
@@ -350,6 +391,8 @@ def service(
             default_difficulty=default_difficulty,
             partial_time_limit=partial_time_limit,
             partial_confirmation_delay=partial_confirmation_delay,
+            partial_confirmation_batches=partial_confirmation_batches,
+            singleton_scan_batches=singleton_scan_batches,
             scan_start_height=scan_start_height,
             confirmation_security_threshold=confirmation_security_threshold,
             max_additions_per_transaction=max_additions_per_transaction,
