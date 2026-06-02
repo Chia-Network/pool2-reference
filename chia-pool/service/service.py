@@ -173,7 +173,7 @@ class Service:
         for launcher_id in launcher_id_response["launcher_ids"]:
             if launcher_id not in cached_launcher_ids:
                 self._reward_hash_to_launcher_id[RewardPuzzle(singleton_id=launcher_id).puzzle_hash()] = launcher_id
-        for cached_launcher_id in cached_launcher_ids:
+        for cached_launcher_id in list(cached_launcher_ids):
             if cached_launcher_id not in launcher_id_response["launcher_ids"]:
                 del self._reward_hash_to_launcher_id[RewardPuzzle(singleton_id=cached_launcher_id).puzzle_hash()]
 
