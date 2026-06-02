@@ -13,8 +13,9 @@ class UIntValidator(Validator):
     num_bits: int
     non_zero: bool = False
 
-    def __call__(self, value: int) -> bool:
-        return (value > 0 if self.non_zero else value >= 0) and value.bit_length() <= self.num_bits
+    def __call__(self, value: int) -> None:
+        if not ((value > 0 if self.non_zero else value >= 0) and value.bit_length() <= self.num_bits):
+            raise ValidationError(f"Value must be a non-negative integer with {self.num_bits} bits or less")
 
 
 class PoolIdentitySchema(Schema):
