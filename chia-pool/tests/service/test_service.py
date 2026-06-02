@@ -62,6 +62,7 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
             ),
         ]
     )
+    await wallet_envs.full_node.farm_blocks_to_puzzlehash(count=service.config["confirmation_security_threshold"])
 
     farmer_1_wallet = env.wallet_state_manager.wallets[uint32(2)]
     farmer_2_wallet = env.wallet_state_manager.wallets[uint32(3)]
@@ -189,6 +190,7 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
     farmer_2_reward_amount = await wallet_envs.full_node.farm_blocks_to_puzzlehash(
         count=1, farm_to=farmer_2_wallet.p2_singleton_puzzle_hash, guarantee_transaction_blocks=True, timeout=100
     )
+    await wallet_envs.full_node.farm_blocks_to_puzzlehash(count=service.config["confirmation_security_threshold"])
     await wallet_envs.process_pending_states(
         [
             WalletStateTransition(),
@@ -196,12 +198,12 @@ async def test_service(reference_service: tuple[ServiceAPI, PropertyMock], walle
                 pre_block_balance_updates={
                     1: {"set_remainder": True},
                     2: {"confirmed_wallet_balance": 1_750_000_000_000, "set_remainder": True},
-                    3: {"set_remainder": True},
+                    3: {"confirmed_wallet_balance": 1_750_000_000_000, "set_remainder": True},
                 },
                 post_block_balance_updates={
                     1: {"set_remainder": True},
                     2: {"set_remainder": True},
-                    3: {"confirmed_wallet_balance": 1_750_000_000_000, "set_remainder": True},
+                    3: {"set_remainder": True},
                 },
             ),
         ]

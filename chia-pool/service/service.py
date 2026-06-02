@@ -42,6 +42,8 @@ class Service:
     wallet: Wallet
     config: Config
 
+    _reward_hash_to_launcher_id: dict[bytes32, bytes32]
+
     @property
     def current_time(self) -> uint64:
         return uint64(time.time())
@@ -56,98 +58,107 @@ class Service:
         self.store = store
         self.full_node = full_node
         self.wallet = wallet
+        self._reward_hash_to_launcher_id = {}
         return self
 
     async def confirm_partials(self) -> None:
         """
         The purpose of this task is to confirm partials that have been submitted by farmers after appropriate burial
         """
-        launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
-        target_timestamp = uint64(self.current_time - self.config["partial_confirmation_delay"])
-        for launcher_id in launcher_id_response["launcher_ids"]:
-            partials_response = await self.store.get_partials(
-                launcher_id=launcher_id,
-                confirmed=False,
-                before=target_timestamp,
+        for start in range(0, 1_000_000_000, self.config["partial_confirmation_batches"]):
+            launcher_id_response = await self.store.get_launcher_ids(
+                start=uint64(start), count=uint64(self.config["partial_confirmation_batches"])
             )
-            for partial in partials_response["partials"]:
-                if not await confirm_partial(
-                    partial=partial,
-                    node_rpc=self.full_node,
-                ):
-                    await self.store.delete_partial(pos_hash=partial.pos_hash)
+            if launcher_id_response["launcher_ids"] == []:
+                break
+            target_timestamp = uint64(self.current_time - self.config["partial_confirmation_delay"])
+            for launcher_id in launcher_id_response["launcher_ids"]:
+                partials_response = await self.store.get_partials(
+                    launcher_id=launcher_id,
+                    confirmed=False,
+                    before=target_timestamp,
+                )
+                for partial in partials_response["partials"]:
+                    if not await confirm_partial(
+                        partial=partial,
+                        node_rpc=self.full_node,
+                    ):
+                        await self.store.delete_partial(pos_hash=partial.pos_hash)
 
-            await self.store.confirm_partials(launcher_id=launcher_id, until_timestamp=target_timestamp)
+                await self.store.confirm_partials(launcher_id=launcher_id, until_timestamp=target_timestamp)
 
     async def check_for_singletons(self) -> None:
         """
         The purpose of this task is to follow farmer singletons to monitor for any exits initiated or completed.
         """
-        # TODO: v1
         peak_height = (await self.full_node.get_blockchain_state())["peak"]
-        launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
-        for launcher_id in launcher_id_response["launcher_ids"]:
-            farmer_response = await self.store.get_farmer(launcher_id=launcher_id)
-            plotnft_puzzle = PlotNFTPuzzle(
-                launcher_id=launcher_id,
-                genesis_challenge=bytes32.from_hexstr(self.config["genesis_challenge"]),
-                user_config=UserConfig(synthetic_pubkey=farmer_response["authentication_public_key"]),
-                exiting=False,
-                pool_config=PoolConfig(
-                    pool_puzzle_hash=bytes32.from_hexstr(self.config["pool_identity"]["pool_claim_hash"]),
-                    heightlock=uint32(self.config["pool_identity"]["relative_lock_height"]),
-                    pool_memoization=Program.fromhex(self.config["pool_identity"]["pool_memoization"]),
-                ),
+        for start in range(0, 1_000_000_000, self.config["singleton_scan_batches"]):
+            launcher_id_response = await self.store.get_launcher_ids(
+                start=uint64(start), count=uint64(self.config["singleton_scan_batches"])
             )
-            plotnft_puzzle_exiting = replace(plotnft_puzzle, exiting=True)
-            plotnfts_response = await self.full_node.get_coin_records_by_puzzle_hashes(
-                puzzle_hashes=[plotnft_puzzle.puzzle_hash(nonce=0), plotnft_puzzle_exiting.puzzle_hash(nonce=0)],
-                include_spent_coins=False,
-                start_height=uint32(self.config["scan_start_height"]),  # TODO: persist height scanned
-            )
-            if len(plotnfts_response["coin_records"]) > 1:
-                raise ValueError("Multiple plot NFTs found")
-            if len(plotnfts_response["coin_records"]) == 0:
-                latest_payout = await self.store.get_latest_payout()
-                confirmed_partials = await self.store.get_partials(
+            if launcher_id_response["launcher_ids"] == []:
+                break
+            for launcher_id in launcher_id_response["launcher_ids"]:
+                farmer_response = await self.store.get_farmer(launcher_id=launcher_id)
+                plotnft_puzzle = PlotNFTPuzzle(
                     launcher_id=launcher_id,
-                    confirmed=True,
-                    since=latest_payout["timestamp"] if latest_payout is not None else uint64(0),
+                    genesis_challenge=bytes32.from_hexstr(self.config["genesis_challenge"]),
+                    user_config=UserConfig(synthetic_pubkey=farmer_response["authentication_public_key"]),
+                    exiting=False,
+                    pool_config=PoolConfig(
+                        pool_puzzle_hash=bytes32.from_hexstr(self.config["pool_identity"]["pool_claim_hash"]),
+                        heightlock=uint32(self.config["pool_identity"]["relative_lock_height"]),
+                        pool_memoization=Program.fromhex(self.config["pool_identity"]["pool_memoization"]),
+                    ),
                 )
-                unconfirmed_partials = await self.store.get_partials(
+                plotnft_puzzle_exiting = replace(plotnft_puzzle, exiting=True)
+                plotnfts_response = await self.full_node.get_coin_records_by_puzzle_hashes(
+                    puzzle_hashes=[plotnft_puzzle.puzzle_hash(nonce=0), plotnft_puzzle_exiting.puzzle_hash(nonce=0)],
+                    include_spent_coins=False,
+                    start_height=uint32(self.config["scan_start_height"]),  # TODO: persist height scanned
+                )
+                if len(plotnfts_response["coin_records"]) > 1:
+                    raise ValueError("Multiple plot NFTs found")
+                if len(plotnfts_response["coin_records"]) == 0:
+                    latest_payout = await self.store.get_latest_payout()
+                    confirmed_partials = await self.store.get_partials(
+                        launcher_id=launcher_id,
+                        confirmed=True,
+                        since=latest_payout["timestamp"] if latest_payout is not None else uint64(0),
+                    )
+                    unconfirmed_partials = await self.store.get_partials(
+                        launcher_id=launcher_id,
+                        confirmed=False,
+                        since=latest_payout["timestamp"] if latest_payout is not None else uint64(0),
+                    )
+                    if len(confirmed_partials["partials"]) + len(unconfirmed_partials["partials"]) == 0:
+                        await self.store.delete_farmer(launcher_id=launcher_id)
+                        await self.store.delete_singleton(launcher_id=launcher_id)
+                        await self.store.delete_all_partials(launcher_id=launcher_id)
+                    continue
+                plotnft_coin = plotnfts_response["coin_records"][0]
+                if plotnft_coin.confirmed_block_index > peak_height - self.config["confirmation_security_threshold"]:
+                    continue
+                if plotnft_coin.coin.puzzle_hash == plotnft_puzzle_exiting.puzzle_hash(nonce=0):
+                    exiting_height = uint32(
+                        plotnft_coin.confirmed_block_index + self.config["pool_identity"]["relative_lock_height"]
+                    )
+                else:
+                    exiting_height = None
+                # TODO: some re-org robustness might be nice
+                # If somehow this gets added and then a reorg makes it happen at an earlier block height,
+                # we're going to be in an awkward state
+                await self.store.add_singleton(
                     launcher_id=launcher_id,
-                    confirmed=False,
-                    since=latest_payout["timestamp"] if latest_payout is not None else uint64(0),
+                    coin_id=plotnft_coin.coin.name(),
+                    created_height=plotnft_coin.confirmed_block_index,
+                    exiting_height=exiting_height,
                 )
-                if len(confirmed_partials["partials"]) + len(unconfirmed_partials["partials"]) == 0:
-                    await self.store.delete_farmer(launcher_id=launcher_id)
-                    await self.store.delete_singleton(launcher_id=launcher_id)
-                    await self.store.delete_all_partials(launcher_id=launcher_id)
-                continue
-            plotnft_coin = plotnfts_response["coin_records"][0]
-            if plotnft_coin.confirmed_block_index > peak_height - self.config["confirmation_security_threshold"]:
-                continue
-            if plotnft_coin.coin.puzzle_hash == plotnft_puzzle_exiting.puzzle_hash(nonce=0):
-                exiting_height = uint32(
-                    plotnft_coin.confirmed_block_index + self.config["pool_identity"]["relative_lock_height"]
-                )
-            else:
-                exiting_height = None
-            # TODO: some re-org robustness might be nice
-            # If somehow this gets added and then a reorg makes it happen at an earlier block height,
-            # we're going to be in an awkward state
-            await self.store.add_singleton(
-                launcher_id=launcher_id,
-                coin_id=plotnft_coin.coin.name(),
-                created_height=plotnft_coin.confirmed_block_index,
-                exiting_height=exiting_height,
-            )
 
     async def collect_pool_rewards(self) -> None:
         """
         The purpose of this task is to forward to the pool any pool rewards that farmers have successfully farmed.
         """
-        # TODO: v1
         response = await self.store.is_pending_reward_claim()
         if response["pending"]:
             assert response["tx_id"] is not None
@@ -157,13 +168,17 @@ class Service:
             return
 
         peak_height = (await self.full_node.get_blockchain_state())["peak"]
-        launcher_id_response = await self.store.get_launcher_ids()  # TODO: pagination?
-        launcher_id_to_reward_hash: dict[bytes32, bytes32] = {}
+        launcher_id_response = await self.store.get_launcher_ids()
+        cached_launcher_ids = self._reward_hash_to_launcher_id.values()
         for launcher_id in launcher_id_response["launcher_ids"]:
-            # TODO: cache
-            launcher_id_to_reward_hash[launcher_id] = RewardPuzzle(singleton_id=launcher_id).puzzle_hash()
+            if launcher_id not in cached_launcher_ids:
+                self._reward_hash_to_launcher_id[RewardPuzzle(singleton_id=launcher_id).puzzle_hash()] = launcher_id
+        for cached_launcher_id in list(cached_launcher_ids):
+            if cached_launcher_id not in launcher_id_response["launcher_ids"]:
+                del self._reward_hash_to_launcher_id[RewardPuzzle(singleton_id=cached_launcher_id).puzzle_hash()]
+
         response = await self.full_node.get_coin_records_by_puzzle_hashes(
-            puzzle_hashes=list(launcher_id_to_reward_hash.values()),
+            puzzle_hashes=list(self._reward_hash_to_launcher_id.keys()),
             include_spent_coins=False,
             start_height=uint32(self.config["scan_start_height"]),  # TODO: persist height scanned
         )
@@ -172,9 +187,8 @@ class Service:
 
         all_spends = []  # TODO: batching
         reward_amount = 0
-        for launcher_id in launcher_id_response["launcher_ids"]:
-            if launcher_id_to_reward_hash[launcher_id] not in reward_hashes:
-                continue
+        for reward_hash in reward_hashes:
+            launcher_id = self._reward_hash_to_launcher_id[reward_hash]
             latest_singleton_response = await self.store.get_latest_singleton(launcher_id=launcher_id)
             plotnft_coin_record = (
                 await self.full_node.get_coin_record_by_name(coin_id=latest_singleton_response["coin_id"])
@@ -205,7 +219,7 @@ class Service:
             all_rewards = [
                 reward_record
                 for reward_record in response["coin_records"]
-                if reward_record.coin.puzzle_hash == launcher_id_to_reward_hash[launcher_id]
+                if reward_record.coin.puzzle_hash == reward_hash
                 and reward_record.coin.parent_coin_info[0:16]
                 == bytes32.from_hexstr(self.config["genesis_challenge"])[0:16]
                 and reward_record.confirmed_block_index <= peak_height - self.config["confirmation_security_threshold"]
@@ -300,8 +314,5 @@ class Service:
                 payments=payment_batch,
                 fee=uint64(0),
             )
-        await self.store.add_payout(
-            timestamp=timestamp,
-            payout_details="",  # TODO: delete this?
-        )
+        await self.store.add_payout(timestamp=timestamp)
         await self.store.set_claims_statuses(timestamps=[claim["timestamp"] for claim in reward_claims["claims"]])

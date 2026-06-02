@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 import farmer_rpc.v2
 import pytest
-from api.node_rpc import GetRecentSignagePointOrEOSResponse
+from api.node_rpc import GetCoinRecordsByPuzzleHashesResponse, GetRecentSignagePointOrEOSResponse
 from api.server import CONFIG_FILE_NAME, Config, FarmerRPCError
 from api.service import Service as ServiceAPI
 from chia._tests.environments.wallet import WalletTestFramework
@@ -53,21 +53,47 @@ async def test_v2_rpc(
         bytes32.zeros,
     )
     assert isinstance(pool_info_response, pool_protocol.GetPoolInfoResponse)
-    post_farmer_response = await farmer_rpc.v2.post_farmer(
-        pool_protocol.PostFarmerRequest(
-            payload=pool_protocol.PostFarmerPayload(
-                launcher_id=bytes32.zeros,
-                authentication_token=uint64(0),
-                authentication_public_key=SK.get_g1(),
-                payout_instructions=wallet_address,
-                suggested_difficulty=uint64(0),
-            ),
-            signature=G2Element(),  # TODO
-        ),
-        service,
-        config,
-        bytes32.zeros,
+    payload = pool_protocol.PostFarmerPayload(
+        launcher_id=bytes32.zeros,
+        authentication_token=uint64(0),
+        authentication_public_key=SK.get_g1(),
+        payout_instructions=wallet_address,
+        suggested_difficulty=uint64(0),
     )
+    signature = AugSchemeMPL.sign(AugSchemeMPL.derive_child_sk_unhardened(SK, 12381), payload.get_hash())
+    with pytest.raises(FarmerRPCError, match="No plot NFT found"):
+        await farmer_rpc.v2.post_farmer(
+            pool_protocol.PostFarmerRequest(payload=payload, signature=signature),
+            service,
+            config,
+            bytes32.zeros,
+        )
+    with (
+        patch.object(
+            service.full_node,
+            "get_coin_records_by_puzzle_hashes",
+            new=AsyncMock(return_value=GetCoinRecordsByPuzzleHashesResponse(coin_records=[Mock(), Mock()])),
+        ),
+        pytest.raises(FarmerRPCError, match="Multiple plot NFTs found"),
+    ):
+        await farmer_rpc.v2.post_farmer(
+            pool_protocol.PostFarmerRequest(payload=payload, signature=signature),
+            service,
+            config,
+            bytes32.zeros,
+        )
+    with patch.object(
+        service.full_node,
+        "get_coin_records_by_puzzle_hashes",
+        new=AsyncMock(return_value=GetCoinRecordsByPuzzleHashesResponse(coin_records=[Mock()])),
+    ):
+        post_farmer_response = await farmer_rpc.v2.post_farmer(
+            pool_protocol.PostFarmerRequest(payload=payload, signature=signature),
+            service,
+            config,
+            bytes32.zeros,
+        )
+
     assert isinstance(post_farmer_response, pool_protocol.PostFarmerResponse)
     login_response = await farmer_rpc.v2.get_auth(
         pool_protocol.GetAuthRequest(
@@ -94,7 +120,7 @@ async def test_v2_rpc(
                 authentication_public_key=SK.get_g1(),
                 authentication_token_v2=login_response.authentication_token,
             ),
-            signature=G2Element(),  # TODO
+            signature=None,
         ),
         service,
         config,

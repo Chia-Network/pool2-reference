@@ -50,7 +50,9 @@ class NodeRPC:
     async def get_blockchain_state(self) -> GetBlockchainStateResponse:
         dict_response = await self.client.get_blockchain_state()
         return GetBlockchainStateResponse(
-            peak=uint32(dict_response["peak"].height), synced=dict_response["sync"]["synced"]
+            peak=uint32(dict_response["peak"].height),
+            synced=dict_response["sync"]["synced"],
+            previous_transaction_block_height=dict_response["peak"].prev_transaction_block_height,
         )
 
     async def get_coin_records_by_puzzle_hashes(

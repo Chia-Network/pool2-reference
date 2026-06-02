@@ -40,6 +40,7 @@ class Config(TypedDict):
     default_difficulty: int
     partial_time_limit: int
     partial_confirmation_delay: int
+    partial_confirmation_batches: int
     scan_start_height: int
     confirmation_security_threshold: int
     max_additions_per_transaction: int
@@ -47,3 +48,4 @@ class Config(TypedDict):
     time_target: int
     fee_basis_points: int
     genesis_challenge: str
+    singleton_scan_batches: int

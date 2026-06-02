@@ -11,9 +11,11 @@ from marshmallow.validate import Validator
 @dataclass(frozen=True, kw_only=True)
 class UIntValidator(Validator):
     num_bits: int
+    non_zero: bool = False
 
-    def __call__(self, value: int) -> bool:
-        return value >= 0 and value.bit_length() <= self.num_bits
+    def __call__(self, value: int) -> None:
+        if not ((value > 0 if self.non_zero else value >= 0) and value.bit_length() <= self.num_bits):
+            raise ValidationError(f"Value must be a non-negative integer with {self.num_bits} bits or less")
 
 
 class PoolIdentitySchema(Schema):
@@ -38,14 +40,16 @@ class PoolIdentitySchema(Schema):
 
 class ConfigSchema(Schema):
     pool_identity = fields.Nested(PoolIdentitySchema)
-    min_difficulty = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
-    default_difficulty = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
-    partial_time_limit = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
+    min_difficulty = fields.Integer(required=True, validate=UIntValidator(num_bits=64, non_zero=True))
+    default_difficulty = fields.Integer(required=True, validate=UIntValidator(num_bits=64, non_zero=True))
+    partial_time_limit = fields.Integer(required=True, validate=UIntValidator(num_bits=64, non_zero=True))
     partial_confirmation_delay = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
+    partial_confirmation_batches = fields.Integer(required=True, validate=UIntValidator(num_bits=64, non_zero=True))
+    singleton_scan_batches = fields.Integer(required=True, validate=UIntValidator(num_bits=64, non_zero=True))
     scan_start_height = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
-    confirmation_security_threshold = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
-    max_additions_per_transaction = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
-    number_of_partials_target = fields.Integer(required=True, validate=UIntValidator(num_bits=32))
-    time_target = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
+    confirmation_security_threshold = fields.Integer(required=True, validate=UIntValidator(num_bits=32, non_zero=True))
+    max_additions_per_transaction = fields.Integer(required=True, validate=UIntValidator(num_bits=32, non_zero=True))
+    number_of_partials_target = fields.Integer(required=True, validate=UIntValidator(num_bits=32, non_zero=True))
+    time_target = fields.Integer(required=True, validate=UIntValidator(num_bits=64, non_zero=True))
     fee_basis_points = fields.Integer(required=True, validate=UIntValidator(num_bits=64))
     genesis_challenge = fields.Str(required=True)

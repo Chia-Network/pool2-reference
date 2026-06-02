@@ -169,11 +169,8 @@ async def test_sqlite_store(store_config: None, store_type: type[Store], root_pa
         assert await store.get_partials(launcher_id=farmer_2_launcher_id, confirmed=True) == GetPartialsResponse(
             partials=[]
         )
-        await store.add_payout(timestamp=uint64(2), payout_details=farmer_1_payout_instructions)
-        assert await store.get_latest_payout() == GetLatestPayoutResponse(
-            payout_details=farmer_1_payout_instructions,
-            timestamp=uint64(2),
-        )
+        await store.add_payout(timestamp=uint64(2))
+        assert await store.get_latest_payout() == GetLatestPayoutResponse(timestamp=uint64(2))
         await store.add_reward_claim(timestamp=uint64(1), amount=uint64(100), tx_id=bytes32.zeros)
         await store.confirm_claim_tx(tx_id=bytes32.zeros)
         assert await store.get_unpaid_reward_claims() == GetRewardClaimsResponse(
