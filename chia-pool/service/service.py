@@ -169,9 +169,14 @@ class Service:
 
         peak_height = (await self.full_node.get_blockchain_state())["peak"]
         launcher_id_response = await self.store.get_launcher_ids()
+        cached_launcher_ids = self._reward_hash_to_launcher_id.values()
         for launcher_id in launcher_id_response["launcher_ids"]:
-            if launcher_id not in self._reward_hash_to_launcher_id:
+            if launcher_id not in cached_launcher_ids:
                 self._reward_hash_to_launcher_id[RewardPuzzle(singleton_id=launcher_id).puzzle_hash()] = launcher_id
+        for cached_launcher_id in cached_launcher_ids:
+            if cached_launcher_id not in launcher_id_response["launcher_ids"]:
+                del self._reward_hash_to_launcher_id[RewardPuzzle(singleton_id=cached_launcher_id).puzzle_hash()]
+
         response = await self.full_node.get_coin_records_by_puzzle_hashes(
             puzzle_hashes=list(self._reward_hash_to_launcher_id.keys()),
             include_spent_coins=False,
