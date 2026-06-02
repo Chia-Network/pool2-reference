@@ -23,6 +23,7 @@ ignore = [
 
     # Pylint warning
     "PLW1641", # eq-without-hash
+    "PLW0717", # too-many-statements-in-try-clause (worth fixing probably)
 
     # Flake8 async
     # Should probably fix these
