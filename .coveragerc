@@ -11,6 +11,7 @@ parallel=True
 [paths]
 source =
   chia-pool/
+  .venv/**/site-packages/chia-pool/
 
 [report]
 precision = 1
