@@ -158,11 +158,7 @@ jobs:
 
       - name: Test code with pytest
         run: |
-          pytest . -n ${{ matrix.os.pytest-threads }} --cov= --cov-config=.coveragerc --cov-report=
-
-      - name: Move back to chia-pool/ for coverage
-        run: |
-          mv notchia-pool/ chia-pool/
+          pytest . -n ${{ matrix.os.pytest-threads }} --cov=notchia-pool --cov-config=.coveragerc --cov-report=
 
       - name: Process coverage data
         shell: bash
