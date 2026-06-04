@@ -130,10 +130,6 @@ jobs:
 
           exit $DIFF_EXIT_CODE
 
-      - name: Move chia/ so we test the installed code
-        run: |
-          mv chia-pool/ notchia-pool/
-
       - name: Cache test blocks and plots
         uses: actions/cache@v5
         env:
@@ -157,8 +153,9 @@ jobs:
           mv "${GITHUB_WORKSPACE}/test-cache-${{ env.BLOCKS_AND_PLOTS_VERSION }}/"* "${GITHUB_WORKSPACE}/.chia"
 
       - name: Test code with pytest
+        shell: bash
         run: |
-          pytest . -n ${{ matrix.os.pytest-threads }} --cov=notchia-pool --cov-config=.coveragerc --cov-report=
+          pytest . -n ${{ matrix.os.pytest-threads }} --cov=chia-pool --cov-config=.coveragerc --cov-report=
 
       - name: Process coverage data
         shell: bash
