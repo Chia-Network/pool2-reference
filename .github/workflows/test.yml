@@ -177,6 +177,10 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+      - name: Move back to chia-pool/ for coverage
+        run: |
+          mv notchia-pool/ chia-pool/
+
   coverage:
     if: always() && github.repository_owner == 'Chia-Network'
     name: Coverage - Python 3.12
