@@ -4,7 +4,14 @@ disable_warnings=
   module-not-measured
 relative_files=True
 source =
-  chia-pool
+  api
+  farmer_rpc
+  node
+  server
+  service
+  store
+  tests
+  wallet
 concurrency=multiprocessing, thread
 parallel=True
 

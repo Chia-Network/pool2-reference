@@ -158,7 +158,11 @@ jobs:
 
       - name: Test code with pytest
         run: |
-          pytest . -n ${{ matrix.os.pytest-threads }} --cov=notchia-pool --cov-config=.coveragerc --cov-report=
+          pytest . -n ${{ matrix.os.pytest-threads }} --cov= --cov-config=.coveragerc --cov-report=
+
+      - name: Move back to chia-pool/ for coverage
+        run: |
+          mv notchia-pool/ chia-pool/
 
       - name: Process coverage data
         shell: bash
@@ -176,10 +180,6 @@ jobs:
           path: coverage-data/*
           include-hidden-files: true
           if-no-files-found: error
-
-      - name: Move back to chia-pool/ for coverage
-        run: |
-          mv notchia-pool/ chia-pool/
 
   coverage:
     if: always() && github.repository_owner == 'Chia-Network'
