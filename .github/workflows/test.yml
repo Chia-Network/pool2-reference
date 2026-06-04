@@ -157,8 +157,11 @@ jobs:
           mv "${GITHUB_WORKSPACE}/test-cache-${{ env.BLOCKS_AND_PLOTS_VERSION }}/"* "${GITHUB_WORKSPACE}/.chia"
 
       - name: Test code with pytest
+        shell: bash
         run: |
-          pytest . -n ${{ matrix.os.pytest-threads }} --cov=chia-pool --cov-config=.coveragerc --cov-report=
+          COV_SOURCE="$(python -c "import api; from pathlib import Path; print(Path(api.__file__).resolve().parent.parent)")"
+          echo "Measuring coverage for: ${COV_SOURCE}"
+          pytest . -n ${{ matrix.os.pytest-threads }} --cov="${COV_SOURCE}" --cov-config=.coveragerc --cov-report=
 
       - name: Move back to chia-pool/ for coverage
         shell: bash
