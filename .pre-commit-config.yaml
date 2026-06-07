@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: init_py_files
         name: __init__.py files
-        entry: ./activated.py python build-init-files.py -v --root . --tree chia-pool
+        entry: ./activated.py python build-init-files.py -v --root . --tree chia_pool
         language: system
         pass_filenames: false
   - repo: local

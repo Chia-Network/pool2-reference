@@ -21,7 +21,7 @@ For an overview of what the project does, see [README.md](README.md).
 
 ## Before you start
 
-- **Search existing issues and PRs** on [GitHub](https://github.com/Chia-Network/chia-pool) to avoid duplicate work.
+- **Search existing issues and PRs** on [GitHub](https://github.com/Chia-Network/pool2-reference) to avoid duplicate work.
 - **Open an issue** for large or ambiguous changes (new endpoints, payout schemes, storage backends) so maintainers can align on approach before you invest heavily.
 - **Keep scope focused.** Small, reviewable PRs are easier to merge than sweeping refactors mixed with feature work.
 - **Protocol changes** that affect farmers or on-chain behavior need coordination with [chia-blockchain](https://github.com/Chia-Network/chia-blockchain) and the pooling specification; discuss those in an issue first.
@@ -43,8 +43,8 @@ Be respectful and constructive in issues and reviews. For general Chia community
 **Linux / macOS**
 
 ```bash
-git clone https://github.com/Chia-Network/chia-pool.git
-cd chia-pool
+git clone https://github.com/Chia-Network/pool2-reference.git
+cd pool2-reference
 ./install.sh -d
 source ./activate
 ```
@@ -52,8 +52,8 @@ source ./activate
 **Windows (PowerShell)**
 
 ```powershell
-git clone https://github.com/Chia-Network/chia-pool.git
-cd chia-pool
+git clone https://github.com/Chia-Network/pool2-reference.git
+cd pool2-reference
 .\Install.ps1 -d
 .\venv\Scripts\Activate.ps1
 ```
@@ -90,14 +90,14 @@ python activated.py -- pre-commit run --all-files
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Line length        | **120** characters (`ruff.toml`)                                                                                                                         |
 | Future annotations | Every `.py` file must start with `from __future__ import annotations`                                                                                    |
-| Imports            | **No relative imports** — use top-level names (`api`, `service`, `farmer_rpc`, …) as in existing modules under `chia-pool/`                              |
+| Imports            | **No relative imports** — use top-level names (`api`, `service`, `farmer_rpc`, …) as in existing modules under `chia_pool/`                              |
 | Formatting         | **Ruff format** (enforced in pre-commit)                                                                                                                 |
 | Linting            | **Ruff** with a broad rule set; some categories are intentionally ignored (docstrings, many `TRY`/`BLE` rules) — match surrounding code when fixing lint |
 | Types              | **mypy** in strict mode (`mypy.ini`) — new code should type-check cleanly                                                                                |
 
 ### Package layout
 
-Application code lives under **`chia-pool/`**. When running or testing locally, commands are usually issued from that directory or with `chia-pool` on the module path (see `pytest.ini` `testpaths`).
+Application code lives under **`chia_pool/`**. When running or testing locally, commands are usually issued from that directory or with `chia_pool` on the module path (see `pytest.ini` `testpaths`).
 
 - **`api/`** — TypedDict configs and protocols (`Store`, `NodeRPC`, `Wallet`, …)
 - **`farmer_rpc/`** — HTTP handler implementations (e.g. `v2.py`)
@@ -108,10 +108,10 @@ Application code lives under **`chia-pool/`**. When running or testing locally, 
 
 ### `__init__.py` files
 
-Pre-commit runs `build-init-files.py` to ensure every package directory under `chia-pool/` has an `__init__.py`. Do not remove these; add new package folders and let the hook create the file, or run:
+Pre-commit runs `build-init-files.py` to ensure every package directory under `chia_pool/` has an `__init__.py`. Do not remove these; add new package folders and let the hook create the file, or run:
 
 ```bash
-python activated.py python build-init-files.py -v --root . --tree chia-pool
+python activated.py python build-init-files.py -v --root . --tree chia_pool
 ```
 
 ### Async code
@@ -125,19 +125,19 @@ The server is **asyncio**-based. Prefer `async`/`await` for I/O; avoid blocking 
 From the repository root with the venv active:
 
 ```bash
-pytest chia-pool/tests
+pytest chia_pool/tests
 ```
 
 Parallel runs (as in CI):
 
 ```bash
-pytest chia-pool/tests -n 2
+pytest chia_pool/tests -n 2
 ```
 
 ### Writing tests
 
-- Place tests under `chia-pool/tests/` mirroring the module under test (`tests/rpc/`, `tests/service/`, …).
-- Use existing **fixtures** in `tests/*/conftest.py` and `chia-pool/tests/conftest.py` (`root_path`, `reference_service`, `server_config`, wallet environments, etc.).
+- Place tests under `chia_pool/tests/` mirroring the module under test (`tests/rpc/`, `tests/service/`, …).
+- Use existing **fixtures** in `tests/*/conftest.py` and `chia_pool/tests/conftest.py` (`root_path`, `reference_service`, `server_config`, wallet environments, etc.).
 - Prefer **`pytest.mark.anyio`** for async tests where the suite already does.
 - Do not add tests that only assert trivial constants unless they guard real regression behavior.
 
@@ -149,7 +149,7 @@ Hooks defined in [`.pre-commit-config.yaml`](.pre-commit-config.yaml):
 
 | Hook            | Purpose                                                                               |
 | --------------- | ------------------------------------------------------------------------------------- |
-| `init_py_files` | Regenerate missing `__init__.py` under `chia-pool/`                                   |
+| `init_py_files` | Regenerate missing `__init__.py` under `chia_pool/`                                   |
 | `ruff format`   | Format Python                                                                         |
 | `ruff`          | Lint and auto-fix where possible                                                      |
 | `poetry`        | `poetry check --strict` and refresh lock when `pyproject.toml` / `poetry.lock` change |
@@ -192,7 +192,7 @@ Dependencies are managed with **Poetry** (`pyproject.toml`, `poetry.lock`).
 Before requesting review:
 
 - [ ] `pre-commit run --all-files` passes
-- [ ] `pytest chia-pool/tests` passes
+- [ ] `pytest chia_pool/tests` passes
 - [ ] New behavior has tests where practical
 - [ ] README or config docs updated if user-facing behavior changed
 - [ ] `pyproject.toml` / `poetry.lock` updated together if dependencies changed
@@ -230,6 +230,6 @@ Avoid drive-by changes to ignored Ruff categories project-wide unless discussed 
 
 - **Pooling concepts:** [Chia Pooling FAQ](https://github.com/Chia-Network/chia-blockchain/wiki/Pooling-FAQ)
 - **V1 reference pool:** [pool-reference](https://github.com/Chia-Network/pool-reference)
-- **Bugs and features:** [GitHub Issues](https://github.com/Chia-Network/chia-pool/issues)
+- **Bugs and features:** [GitHub Issues](https://github.com/Chia-Network/pool2-reference/issues)
 
 Thank you for contributing.

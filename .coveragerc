@@ -4,14 +4,14 @@ disable_warnings=
   module-not-measured
 relative_files=True
 source =
-  chia-pool
+  chia_pool
 concurrency=multiprocessing, thread
 parallel=True
 
 [paths]
 source =
-  chia-pool/
-  .venv/**/site-packages/chia-pool/
+  chia_pool/
+  .venv/**/site-packages/chia_pool/
 
 [report]
 precision = 1

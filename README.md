@@ -2,14 +2,14 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Reference implementation of a Chia **pool server** for the **post–3.0 hard-fork** pooling model. The code lives in the `chia-pool` Python package and is meant as a starting point for pool operators and integrators—not as a turnkey production service.
+Reference implementation of a Chia **pool server** for the **post–3.0 hard-fork** pooling model. The code lives in the `chia_pool` Python package and is meant as a starting point for pool operators and integrators—not as a turnkey production service.
 
 | Topic                                                           | Where to look                                                       |
 | --------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Farmer-facing HTTP API                                          | `chia-pool/farmer_rpc/v2.py` (routes registered as `/v2/...`)       |
-| Background work (confirm partials, absorb rewards, pay farmers) | `chia-pool/service/service.py`, `chia-pool/server/pooling_tasks.py` |
-| CLI entrypoint                                                  | `chia-pool/reference.py`                                            |
-| Persistence                                                     | `chia-pool/store/sqlite.py` (default SQLite store)                  |
+| Farmer-facing HTTP API                                          | `chia_pool/farmer_rpc/v2.py` (routes registered as `/v2/...`)       |
+| Background work (confirm partials, absorb rewards, pay farmers) | `chia_pool/service/service.py`, `chia_pool/server/pooling_tasks.py` |
+| CLI entrypoint                                                  | `chia_pool/reference.py`                                            |
+| Persistence                                                     | `chia_pool/store/sqlite.py` (default SQLite store)                  |
 
 ---
 
@@ -54,7 +54,7 @@ Rewards and membership are enforced on-chain via Plot NFT puzzles; the server co
 | RPC clients | `node/rpc_wrapper.py`, `wallet/rpc_wrapper.py` | Typed wrappers around Chia node/wallet RPC                     |
 | Store       | `store/sqlite.py`                              | Farmers, partials, singletons, payouts, reward claims          |
 
-Configs are split into several YAML files under a single **`--root-path`** (default `~/.chia-pool`), validated with Marshmallow schemas.
+Configs are split into several YAML files under a single **`--root-path`** (default `~/.chia_pool`), validated with Marshmallow schemas.
 
 ---
 
@@ -62,7 +62,7 @@ Configs are split into several YAML files under a single **`--root-path`** (defa
 
 ```
 pool2-reference/
-├── chia-pool/
+├── chia_pool/
 │   ├── reference.py          # Click CLI: config *, start
 │   ├── farmer_rpc/
 │   │   ├── v2.py             # V2 endpoint handlers + METADATA
@@ -76,7 +76,7 @@ pool2-reference/
 │   └── tests/
 ├── install.sh / Install.ps1  # Poetry + venv setup
 ├── activated.py              # Run commands inside the venv
-├── pyproject.toml            # Package: chia-pool
+├── pyproject.toml            # Package: chia_pool
 └── conftest.py               # Pytest plugins (chia test fixtures)
 ```
 
@@ -99,7 +99,7 @@ pool2-reference/
 ### Linux / macOS
 
 ```bash
-git clone https://github.com/Chia-Network/chia-pool.git pool2-reference
+git clone https://github.com/Chia-Network/pool2-reference.git
 cd pool2-reference
 ./install.sh -d    # -d installs dev extras (pytest, ruff, mypy, pre-commit)
 source ./activate  # or: source .venv/bin/activate
@@ -108,7 +108,7 @@ source ./activate  # or: source .venv/bin/activate
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/Chia-Network/chia-pool.git pool2-reference
+git clone https://github.com/Chia-Network/pool2-reference.git pool2-reference
 cd pool2-reference
 .\Install.ps1 -d
 .\venv\Scripts\Activate.ps1
@@ -117,7 +117,7 @@ cd pool2-reference
 ### Run commands via `activated.py`
 
 ```bash
-python activated.py -- pytest chia-pool/tests -n 2
+python activated.py -- pytest chia_pool/tests -n 2
 python activated.py --penv poetry sync
 ```
 
@@ -125,14 +125,14 @@ python activated.py --penv poetry sync
 
 ## Configuration
 
-Generate configs with the CLI (from the `chia-pool` directory, with the venv active):
+Generate configs with the CLI (from the `chia_pool` directory, with the venv active):
 
 ```bash
-cd chia-pool
+cd chia_pool
 python reference.py config --help
 ```
 
-Each subcommand writes one file under `--root-path` (default `~/.chia-pool`):
+Each subcommand writes one file under `--root-path` (default `~/.chia_pool`):
 
 | File                              | CLI command      | Purpose                                                             |
 | --------------------------------- | ---------------- | ------------------------------------------------------------------- |
@@ -164,7 +164,7 @@ Node and wallet config commands accept standard Chia RPC options (`--hostname`, 
 4. Start the server:
 
 ```bash
-cd chia-pool
+cd chia_pool
 python reference.py start \
   --auth-sk "<64-char hex secret key>" \
   --root-path ~/.chia-pool
