@@ -117,7 +117,7 @@ cd pool2-reference
 ### Run commands via `activated.py`
 
 ```bash
-python activated.py -- pytest chia_pool/tests -n 2
+python activated.py -- pytest chia_pool/_tests -n 2
 python activated.py --penv poetry sync
 ```
 

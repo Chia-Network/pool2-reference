@@ -125,19 +125,19 @@ The server is **asyncio**-based. Prefer `async`/`await` for I/O; avoid blocking 
 From the repository root with the venv active:
 
 ```bash
-pytest chia_pool/tests
+pytest chia_pool/_tests
 ```
 
 Parallel runs (as in CI):
 
 ```bash
-pytest chia_pool/tests -n 2
+pytest chia_pool/_tests -n 2
 ```
 
 ### Writing tests
 
-- Place tests under `chia_pool/tests/` mirroring the module under test (`tests/rpc/`, `tests/service/`, …).
-- Use existing **fixtures** in `tests/*/conftest.py` and `chia_pool/tests/conftest.py` (`root_path`, `reference_service`, `server_config`, wallet environments, etc.).
+- Place tests under `chia_pool/_tests/` mirroring the module under test (`tests/rpc/`, `tests/service/`, …).
+- Use existing **fixtures** in `tests/*/conftest.py` and `chia_pool/_tests/conftest.py` (`root_path`, `reference_service`, `server_config`, wallet environments, etc.).
 - Prefer **`pytest.mark.anyio`** for async tests where the suite already does.
 - Do not add tests that only assert trivial constants unless they guard real regression behavior.
 
@@ -192,7 +192,7 @@ Dependencies are managed with **Poetry** (`pyproject.toml`, `poetry.lock`).
 Before requesting review:
 
 - [ ] `pre-commit run --all-files` passes
-- [ ] `pytest chia_pool/tests` passes
+- [ ] `pytest chia_pool/_tests` passes
 - [ ] New behavior has tests where practical
 - [ ] README or config docs updated if user-facing behavior changed
 - [ ] `pyproject.toml` / `poetry.lock` updated together if dependencies changed
