@@ -113,3 +113,6 @@ class WalletRPC:
     async def get_transaction_status(self, *, tx_id: bytes32) -> GetTransactionStatusResponse:
         response = await self.client.get_transaction(GetTransaction(transaction_id=tx_id))
         return GetTransactionStatusResponse(confirmed=response.transaction.confirmed)
+
+    async def not_a_real_endpoint(self) -> None:
+        print("We're printing?")
