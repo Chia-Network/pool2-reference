@@ -54,7 +54,7 @@ Rewards and membership are enforced on-chain via Plot NFT puzzles; the server co
 | RPC clients | `node/rpc_wrapper.py`, `wallet/rpc_wrapper.py` | Typed wrappers around Chia node/wallet RPC                     |
 | Store       | `store/sqlite.py`                              | Farmers, partials, singletons, payouts, reward claims          |
 
-Configs are split into several YAML files under a single **`--root-path`** (default `~/.chia_pool`), validated with Marshmallow schemas.
+Configs are split into several YAML files under a single **`--root-path`** (default `~/.chia-pool`), validated with Marshmallow schemas.
 
 ---
 
@@ -132,7 +132,7 @@ cd chia_pool
 python reference.py config --help
 ```
 
-Each subcommand writes one file under `--root-path` (default `~/.chia_pool`):
+Each subcommand writes one file under `--root-path` (default `~/.chia-pool`):
 
 | File                              | CLI command      | Purpose                                                             |
 | --------------------------------- | ---------------- | ------------------------------------------------------------------- |
