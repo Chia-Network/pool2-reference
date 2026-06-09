@@ -1,5 +1,5 @@
 [project]
-name = "chia-pool"
+name = "chia_pool"
 dynamic = [ "dependencies", ]
 description = "Chia reference pooling implementation"
 requires-python = ">=3.10, <4"
@@ -14,7 +14,7 @@ version = "0.0.1-dev23"
 
 [tool.poetry]
 # see [tool.poetry-dynamic-versioning]
-packages = [{ include = "chia-pool"}]
+packages = [{ include = "chia_pool"}]
 
 [[tool.poetry.source]]
 name = "chia"
@@ -22,7 +22,7 @@ url = "https://pypi.chia.net/simple/"
 priority = "supplemental"
 
 [project.urls]
-source = "https://github.com/Chia-Network/chia-pool/"
+source = "https://github.com/Chia-Network/pool2-reference/"
 
 [tool.poetry.dependencies]
 chia-blockchain = { git = "https://github.com/Chia-Network/chia-blockchain.git", rev = "2bf41aa8e7bfbc9e04f33308eda20b17c590fd67" }
