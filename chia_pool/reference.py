@@ -268,7 +268,7 @@ def wallet(
     required=True,
     help="The minimum difficulty for a farmer to be included in the pool",
     show_default=True,
-    default=10,
+    default=1,
 )
 @click.option(
     "--default-difficulty",
@@ -276,7 +276,7 @@ def wallet(
     required=True,
     help="The default difficulty for a farmer if a difficulty is not suggested",
     show_default=True,
-    default=10,
+    default=1,
 )
 @click.option(
     "--partial-time-limit",
