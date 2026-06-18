@@ -26,7 +26,7 @@ source = "https://github.com/Chia-Network/pool2-reference/"
 
 [tool.poetry.dependencies]
 chia-blockchain = { git = "https://github.com/Chia-Network/chia-blockchain.git", rev = "2bf41aa8e7bfbc9e04f33308eda20b17c590fd67" }
-aiohttp = { version = ">=3.14.0,<4.0.0" }
+aiohttp = { version = ">=3.14.1,<4.0.0" }
 aiosqlite = { version = ">=0.22.1,<0.23.0" }
 chia-rs = { version = "0.44.0" }
 pyjwt = { version = ">=2.10.1,<3.0.0" }
