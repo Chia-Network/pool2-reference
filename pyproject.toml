@@ -39,7 +39,7 @@ pytest-xdist = { version = ">=3.8.0,<4.0.0", optional = true }
 coverage = { version = ">=7.14.0", optional = true }
 diff-cover = { version = ">=9.2.0", optional = true }
 pytest-cov = { version = ">=5.0.0", optional = true }
-ruff = { version = ">=0.15.14", optional = true }
+ruff = { version = ">=0.15.17", optional = true }
 
 [project.optional-dependencies]
 dev = ["coverage", "diff-cover", "mypy", "pre-commit", "pytest", "pytest-cov", "ruff", "pytest-xdist"]
