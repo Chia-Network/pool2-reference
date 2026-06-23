@@ -41,6 +41,7 @@ ignore = [
     # That being said, it would be nice to add some way to actually guard against that specific mutable default behavior.
     "RUF009", # function-call-in-dataclass-default-argument
     "RUF056", # falsy-dict-get-fallback
+    "RUF076", # pytest-fixture-autouse
 
     # Security linter
     "S603", # subprocess-without-shell-equals-true
