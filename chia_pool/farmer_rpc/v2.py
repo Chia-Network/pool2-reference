@@ -8,6 +8,7 @@ from chia.pools.plotnft_drivers import PlotNFTPuzzle, PoolConfig, RewardPuzzle, 
 from chia.protocols import pool_protocol
 from chia.types.blockchain_format.program import Program as ChiaBlockchainProgram
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
+from chia.wallet.uncurried_puzzle import uncurry_puzzle
 from chia_rs import AugSchemeMPL, G2Element, Program
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint8, uint16, uint32, uint64
@@ -126,6 +127,7 @@ async def post_farmer(
             code=pool_protocol.PoolErrorCode.REQUEST_FAILED,
             message='Must have "authentication_public_key" and "payout_instructions" for POST',
         )
+    # verify the plotnft exists
     expected_plotnft_puzzle = PlotNFTPuzzle(
         launcher_id=request.payload.launcher_id,
         genesis_challenge=bytes32.from_hexstr(service.config["genesis_challenge"]),
@@ -146,6 +148,18 @@ async def post_farmer(
         raise FarmerRPCError(code=pool_protocol.PoolErrorCode.INVALID_SINGLETON, message="Multiple plot NFTs found")
     if len(plotnfts_response["coin_records"]) == 0:
         raise FarmerRPCError(code=pool_protocol.PoolErrorCode.NOT_FOUND, message="No plot NFT found")
+    # verify the plotnft has a valid lineage
+    puzzle_solution_response = await service.full_node.get_puzzle_and_solution(
+        coin_id=plotnfts_response["coin_records"][0].coin.parent_coin_info,
+        height=plotnfts_response["coin_records"][0].confirmed_block_index,
+    )
+    if (
+        uncurry_puzzle(puzzle_solution_response["spend"].puzzle_reveal).mod
+        != PlotNFTPuzzle.singleton_puzzles.singleton_mod
+    ):
+        raise FarmerRPCError(
+            code=pool_protocol.PoolErrorCode.INVALID_SINGLETON, message="Singleton does not have a valid lineage"
+        )
     signing_key = AugSchemeMPL.derive_child_pk_unhardened(request.payload.authentication_public_key, 12381)
     if not AugSchemeMPL.verify(signing_key, request.payload.get_hash(), request.signature):
         raise FarmerRPCError(
