@@ -6,16 +6,21 @@ from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 import pytest
 from chia._tests.environments.wallet import WalletTestFramework
-from chia.pools.plotnft_drivers import RewardPuzzle
+from chia.pools.plotnft_drivers import PlotNFTPuzzle, RewardPuzzle
 from chia.protocols import pool_protocol
+from chia.types.coin_spend import make_spend
 from chia.util.keychain import mnemonic_to_seed
-from chia_rs import G2Element, PrivateKey
+from chia_rs import Coin, CoinRecord, G2Element, PrivateKey, Program
 from chia_rs.chia_rs import AugSchemeMPL
 from chia_rs.sized_bytes import bytes32
-from chia_rs.sized_ints import uint64
+from chia_rs.sized_ints import uint32, uint64
 
 import chia_pool.farmer_rpc.v2
-from chia_pool.api.node_rpc import GetCoinRecordsByPuzzleHashesResponse, GetRecentSignagePointOrEOSResponse
+from chia_pool.api.node_rpc import (
+    GetCoinRecordsByPuzzleHashesResponse,
+    GetPuzzleAndSolutionResponse,
+    GetRecentSignagePointOrEOSResponse,
+)
 from chia_pool.api.server import CONFIG_FILE_NAME, Config, FarmerRPCError
 from chia_pool.api.service import Service as ServiceAPI
 from chia_pool.config_loading import canonical_load_config
@@ -86,14 +91,61 @@ async def test_v2_rpc(
     with patch.object(
         service.full_node,
         "get_coin_records_by_puzzle_hashes",
-        new=AsyncMock(return_value=GetCoinRecordsByPuzzleHashesResponse(coin_records=[Mock()])),
+        new=AsyncMock(
+            return_value=GetCoinRecordsByPuzzleHashesResponse(
+                coin_records=[
+                    CoinRecord(
+                        Coin(bytes32.zeros, bytes32.zeros, uint64(0)),
+                        uint32(0),
+                        uint32(0),
+                        coinbase=False,
+                        timestamp=uint64(0),
+                    )
+                ]
+            )
+        ),
     ):
-        post_farmer_response = await chia_pool.farmer_rpc.v2.post_farmer(
-            pool_protocol.PostFarmerRequest(payload=payload, signature=signature),
-            service,
-            config,
-            bytes32.zeros,
-        )
+        with (
+            patch.object(
+                service.full_node,
+                "get_puzzle_and_solution",
+                new=AsyncMock(
+                    return_value=GetPuzzleAndSolutionResponse(
+                        spend=make_spend(
+                            coin=Coin(bytes32.zeros, bytes32.zeros, uint64(0)),
+                            puzzle_reveal=Program.to(None),
+                            solution=Program.to(None),
+                        ),
+                    )
+                ),
+            ),
+            pytest.raises(FarmerRPCError, match="Singleton does not have a valid lineage"),
+        ):
+            post_farmer_response = await chia_pool.farmer_rpc.v2.post_farmer(
+                pool_protocol.PostFarmerRequest(payload=payload, signature=signature),
+                service,
+                config,
+                bytes32.zeros,
+            )
+        with patch.object(
+            service.full_node,
+            "get_puzzle_and_solution",
+            new=AsyncMock(
+                return_value=GetPuzzleAndSolutionResponse(
+                    spend=make_spend(
+                        coin=Coin(bytes32.zeros, bytes32.zeros, uint64(0)),
+                        puzzle_reveal=PlotNFTPuzzle.singleton_puzzles.singleton_mod.curry(Program.to(None)),
+                        solution=Program.to(None),
+                    ),
+                )
+            ),
+        ):
+            post_farmer_response = await chia_pool.farmer_rpc.v2.post_farmer(
+                pool_protocol.PostFarmerRequest(payload=payload, signature=signature),
+                service,
+                config,
+                bytes32.zeros,
+            )
 
     assert isinstance(post_farmer_response, pool_protocol.PostFarmerResponse)
     login_response = await chia_pool.farmer_rpc.v2.get_auth(
