@@ -1305,15 +1305,15 @@ ssh = ["bcrypt (>=3.1.5)"]
 
 [[package]]
 name = "diff-cover"
-version = "10.3.0"
+version = "10.5.0"
 description = "Run coverage and linting reports on diffs"
 optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 markers = "extra == \"dev\""
 files = [
-    {file = "diff_cover-10.3.0-py3-none-any.whl", hash = "sha256:2e47d5ab3868d1e92131c11f364f3f4a8583c97123d3bbc6b6cc8ce0a4cc2202"},
-    {file = "diff_cover-10.3.0.tar.gz", hash = "sha256:474dbc63e815fbb7567d7b7ca5b104123e96129f25426ebdbc9a1bdbb935b2c6"},
+    {file = "diff_cover-10.5.0-py3-none-any.whl", hash = "sha256:5619f924e838b8f8c4c7b243b32a6068d8c449c1766c6f6a1110b152195ed9b9"},
+    {file = "diff_cover-10.5.0.tar.gz", hash = "sha256:a1734543baaaa7d0860a6526016d487be24a0ffe9efb4eca0824c391d4a09d06"},
 ]
 
 [package.dependencies]
@@ -3581,4 +3581,4 @@ dev = ["coverage", "diff-cover", "mypy", "pre-commit", "pytest", "pytest-cov", "
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <4"
-content-hash = "4fd1bc16a3d155530e7f7b028bd31683344db8526b845565629f40cacec7534e"
+content-hash = "35c9849951d57311e41faa290bff416c809a304bfdeff6bfd8d05bd428cfef9f"
