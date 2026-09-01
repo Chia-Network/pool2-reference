@@ -181,7 +181,7 @@ jobs:
     needs: test
 
     steps:
-      - uses: re-actors/alls-green@v1.2.2
+      - uses: re-actors/alls-green@v1.3.0
         id: alls-green
         with:
           jobs: ${{ toJSON(needs) }}
