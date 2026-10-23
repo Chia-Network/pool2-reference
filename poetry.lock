@@ -979,18 +979,15 @@ files = [
 
 [[package]]
 name = "click"
-version = "8.4.1"
+version = "8.5.0"
 description = "Composable command line interface toolkit"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "click-8.4.1-py3-none-any.whl", hash = "sha256:482be17c6991b8c19c5429a1e995d9b0efdbb63172824c41f99965dc0ade8ec2"},
-    {file = "click-8.4.1.tar.gz", hash = "sha256:918b5633eddf6b41c32d4f454bf0de810065c74e3f7dbf8ee5452f8be88d3e96"},
+    {file = "click-8.5.0-py3-none-any.whl", hash = "sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360"},
+    {file = "click-8.5.0.tar.gz", hash = "sha256:ba0d2089de75ea0310e2dde03160e6ca10009947fb95a182f9b54021bb272e34"},
 ]
-
-[package.dependencies]
-colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
 name = "clvm"
@@ -3581,4 +3578,4 @@ dev = ["coverage", "diff-cover", "mypy", "pre-commit", "pytest", "pytest-cov", "
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <4"
-content-hash = "4fd1bc16a3d155530e7f7b028bd31683344db8526b845565629f40cacec7534e"
+content-hash = "e8568c6502bc2832e723a60464404461ff546ab2df7280a94f656254c3d79945"
